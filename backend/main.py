@@ -6,6 +6,7 @@ import database
 import openrouter_api
 import json
 import os
+from datetime import datetime
 
 app = FastAPI(
     title="Smart Project Assistant API",
@@ -16,10 +17,11 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Data Models
@@ -82,16 +84,6 @@ class CodeSnippetRequest(BaseModel):
     prompt: str
     complexity: str = "beginner"
 
-# NEW: Enhanced Portfolio Request
-class EnhancedPortfolioRequest(BaseModel):
-    user_id: int
-    name: str
-    contact: Dict[str, str] = {}
-    education: Dict[str, str] = {}
-    skills: List[str] = []
-    projects: List[Dict[str, Any]] = []
-
-# NEW: AI Portfolio Request
 class AIPortfolioRequest(BaseModel):
     user_id: int
     portfolio_data: PortfolioData
@@ -99,57 +91,112 @@ class AIPortfolioRequest(BaseModel):
 # Routes
 @app.get("/")
 def read_root():
-    return {"message": "Smart Project Assistant API v3.0 is running"}
+    return {
+        "message": "Smart Project Assistant API v3.0 is running", 
+        "status": "healthy", 
+        "timestamp": datetime.now().isoformat(),
+        "endpoints": {
+            "register": "POST /register",
+            "login": "POST /login",
+            "save_profile": "POST /save-profile",
+            "get_profile": "GET /get-profile/{user_id}"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "backend": "running",
+        "version": "3.0",
+        "timestamp": datetime.now().isoformat(),
+        "database": "connected" if database.test_connection() else "disconnected"
+    }
 
 @app.post("/register")
 async def register(user: UserCreate):
     """Register a new user"""
     try:
-        print(f"📝 Register attempt: {user.username}")
+        print(f"📝 Register attempt for username: {user.username}")
+        
+        # Validate input
+        if not user.username or len(user.username) < 3:
+            raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+        if not user.password or len(user.password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
         user_id = database.create_user(user.username, user.password, user.email)
         
-        if user_id:
+        if user_id and user_id > 0:
             print(f"✅ User created: {user.username}, ID: {user_id}")
             return {
                 "message": "User created successfully",
                 "user_id": user_id,
-                "username": user.username
+                "username": user.username,
+                "status": "success"
             }
-        else:
-            print(f"❌ Username exists: {user.username}")
+        elif user_id == 0:  # Username exists
+            print(f"❌ Username already exists: {user.username}")
             raise HTTPException(status_code=400, detail="Username already exists")
+        else:
+            print(f"❌ Unknown error creating user: {user.username}")
+            raise HTTPException(status_code=500, detail="Failed to create user")
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"🔥 Registration error: {str(e)}")
+        import traceback
+        print(f"🔥 Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/login")
 async def login(user: UserLogin):
     """Login existing user"""
     try:
-        print(f"🔐 Login attempt: {user.username}")
+        print(f"🔐 Login attempt for username: {user.username}")
+        
+        # Validate input
+        if not user.username or not user.password:
+            raise HTTPException(status_code=400, detail="Username and password are required")
+        
         user_id = database.authenticate_user(user.username, user.password)
         
-        if user_id:
+        if user_id and user_id > 0:
             print(f"✅ Login successful: {user.username}, ID: {user_id}")
             return {
                 "message": "Login successful",
                 "user_id": user_id,
-                "username": user.username
+                "username": user.username,
+                "status": "success"
             }
+        elif user_id == 0:  # Invalid credentials
+            print(f"❌ Invalid credentials for: {user.username}")
+            raise HTTPException(status_code=401, detail="Invalid username or password")
         else:
-            print(f"❌ Invalid credentials: {user.username}")
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            print(f"❌ User not found: {user.username}")
+            raise HTTPException(status_code=404, detail="User not found")
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"🔥 Login error: {str(e)}")
+        import traceback
+        print(f"🔥 Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 @app.post("/save-profile")
 async def save_profile(profile: StudentProfile):
     """Save student profile"""
     try:
-        print(f"💾 Saving profile for user: {profile.user_id}")
+        print(f"💾 Saving profile for user ID: {profile.user_id}")
+        
+        # Validate user exists
+        user_exists = database.user_exists(profile.user_id)
+        if not user_exists:
+            raise HTTPException(status_code=404, detail="User not found")
+        
         profile_data = {
             "college_name": profile.college_name,
             "branch": profile.branch,
@@ -160,11 +207,17 @@ async def save_profile(profile: StudentProfile):
         
         success = database.save_student_profile(profile.user_id, profile_data)
         if success:
-            print(f"✅ Profile saved for user: {profile.user_id}")
-            return {"message": "Profile saved successfully"}
+            print(f"✅ Profile saved for user ID: {profile.user_id}")
+            return {
+                "message": "Profile saved successfully",
+                "status": "success"
+            }
         else:
+            print(f"❌ Failed to save profile for user ID: {profile.user_id}")
             raise HTTPException(status_code=500, detail="Failed to save profile")
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"🔥 Profile save error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Profile save failed: {str(e)}")
@@ -173,28 +226,60 @@ async def save_profile(profile: StudentProfile):
 async def get_profile(user_id: int):
     """Get student profile"""
     try:
-        print(f"📄 Fetching profile for user: {user_id}")
+        print(f"📄 Fetching profile for user ID: {user_id}")
+        
+        # Validate user exists
+        user_exists = database.user_exists(user_id)
+        if not user_exists:
+            raise HTTPException(status_code=404, detail="User not found")
+        
         profile = database.get_student_profile(user_id)
         
         if profile:
-            print(f"✅ Profile found for user: {user_id}")
+            print(f"✅ Profile found for user ID: {user_id}")
             return profile
         else:
-            print(f"⚠️ Profile not found for user: {user_id}")
-            raise HTTPException(status_code=404, detail="Profile not found")
+            print(f"⚠️ Profile not found for user ID: {user_id}")
+            return {
+                "message": "Profile not found",
+                "user_id": user_id,
+                "status": "not_found"
+            }
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"🔥 Profile fetch error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Profile fetch failed: {str(e)}")
+
+# Debug endpoints
+@app.get("/debug/db")
+async def debug_database():
+    """Debug database connection"""
+    try:
+        return database.debug_info()
+    except Exception as e:
+        return {"error": str(e), "status": "error"}
+
+@app.get("/debug/users")
+async def debug_users():
+    """List all users"""
+    try:
+        users = database.get_all_users()
+        return {
+            "total_users": len(users),
+            "users": users
+        }
+    except Exception as e:
+        return {"error": str(e), "status": "error"}
 
 # Project Ideas
 @app.post("/get-project-ideas")
 async def get_project_ideas(request: ProjectIdeaRequest):
     """Get AI-generated project ideas"""
     try:
-        print(f"💡 Generating project ideas: {request.domain} ({request.skill_level})")
+        print(f"💡 Generating {request.count} project ideas for domain: {request.domain}, skill level: {request.skill_level}")
         
-        # Get AI-generated ideas
         ai = openrouter_api.OpenRouterAI()
         ideas = ai.get_project_ideas(request.domain, request.skill_level, request.count)
         
@@ -202,14 +287,18 @@ async def get_project_ideas(request: ProjectIdeaRequest):
             try:
                 ideas = json.loads(ideas)
             except:
-                # If it's not JSON, format it
                 ideas = {"ideas": [ideas]}
         
-        return {"ideas": ideas}
+        return {
+            "ideas": ideas,
+            "count": len(ideas) if isinstance(ideas, list) else 1,
+            "domain": request.domain,
+            "skill_level": request.skill_level,
+            "status": "success"
+        }
         
     except Exception as e:
         print(f"🔥 Project ideas error: {str(e)}")
-        # Return fallback ideas
         return get_fallback_ideas(request.domain, request.skill_level)
 
 def get_fallback_ideas(domain, skill_level):
@@ -256,7 +345,13 @@ def get_fallback_ideas(domain, skill_level):
     }
     
     ideas = fallback_ideas.get(domain, fallback_ideas["web"])
-    return {"ideas": ideas[:3]}
+    return {
+        "ideas": ideas[:3],
+        "count": len(ideas[:3]),
+        "domain": domain,
+        "skill_level": skill_level,
+        "status": "fallback"
+    }
 
 # Project Evaluation
 @app.post("/evaluate-project")
@@ -274,11 +369,17 @@ async def evaluate_project(request: ProjectEvaluationRequest):
             except:
                 evaluation = generate_manual_evaluation(request.project_description)
         
-        return {"evaluation": evaluation}
+        return {
+            "evaluation": evaluation,
+            "status": "success"
+        }
         
     except Exception as e:
         print(f"🔥 Evaluation error: {str(e)}")
-        return {"evaluation": generate_manual_evaluation(request.project_description)}
+        return {
+            "evaluation": generate_manual_evaluation(request.project_description),
+            "status": "fallback"
+        }
 
 def generate_manual_evaluation(project_description):
     """Generate manual evaluation if AI fails"""
@@ -307,11 +408,17 @@ async def generate_documentation(request: DocumentationRequest):
         ai = openrouter_api.OpenRouterAI()
         documentation = ai.generate_documentation(request.project_details)
         
-        return {"documentation": documentation}
+        return {
+            "documentation": documentation,
+            "status": "success"
+        }
         
     except Exception as e:
         print(f"🔥 Documentation error: {str(e)}")
-        return {"documentation": generate_fallback_docs(request.project_details)}
+        return {
+            "documentation": generate_fallback_docs(request.project_details),
+            "status": "fallback"
+        }
 
 def generate_fallback_docs(project_details):
     """Generate fallback documentation"""
@@ -418,7 +525,12 @@ async def generate_code_snippet(request: CodeSnippetRequest):
         snippet = ai._call_api(prompt, json_response=True)
         
         if snippet and "error" not in snippet:
-            return {"snippet": snippet}
+            return {
+                "snippet": snippet,
+                "language": request.language,
+                "complexity": request.complexity,
+                "status": "success"
+            }
         else:
             # Return fallback snippet
             return {
@@ -427,7 +539,10 @@ async def generate_code_snippet(request: CodeSnippetRequest):
                     "code": f"# {request.prompt}\n# Generated code snippet\n# Language: {request.language}\n# Complexity: {request.complexity}\n\n# Your implementation here\n\ndef main():\n    print('Hello from {request.language}!')\n\nif __name__ == '__main__':\n    main()",
                     "explanation": f"This is a {request.complexity} level {request.language} implementation for: {request.prompt}",
                     "usage_example": f"# Example usage\nresult = main()\nprint(result)"
-                }
+                },
+                "language": request.language,
+                "complexity": request.complexity,
+                "status": "fallback"
             }
             
     except Exception as e:
@@ -438,7 +553,10 @@ async def generate_code_snippet(request: CodeSnippetRequest):
                 "code": f"// Error generating {request.language} code\n// Please try again with a different prompt",
                 "explanation": "Failed to generate code snippet. Please check your internet connection and try again.",
                 "usage_example": "N/A"
-            }
+            },
+            "language": request.language,
+            "complexity": request.complexity,
+            "status": "error"
         }
 
 # Skill Enhancement
@@ -465,17 +583,29 @@ async def get_skill_exercises(request: SkillEnhancementRequest):
         if not exercises or "error" in exercises:
             # Fallback to database exercises
             exercises = database.get_skill_exercises(request.user_id)
-            return {"exercises": exercises, "source": "database"}
+            return {
+                "exercises": exercises,
+                "source": "database",
+                "status": "success"
+            }
         
-        return {"exercises": exercises, "source": "ai"}
+        return {
+            "exercises": exercises,
+            "source": "ai",
+            "status": "success"
+        }
         
     except Exception as e:
         print(f"🔥 Skill exercises error: {str(e)}")
         # Return database exercises
         exercises = database.get_skill_exercises(request.user_id)
-        return {"exercises": exercises, "source": "database_fallback"}
+        return {
+            "exercises": exercises,
+            "source": "database_fallback",
+            "status": "fallback"
+        }
 
-# NEW: Version Control Helper
+# Version Control Helper
 @app.post("/version-control-help")
 async def version_control_help(request: VersionControlRequest):
     """Generate version control commands using AI"""
@@ -498,14 +628,26 @@ Format the response with clear sections and code blocks."""
         commands = ai._call_api(prompt)
         
         if commands and "error" not in commands:
-            return {"commands": commands, "status": "success"}
+            return {
+                "commands": commands,
+                "status": "success",
+                "source": "ai"
+            }
         else:
             # Fallback to local commands
-            return {"commands": get_fallback_commands(request.request), "status": "fallback"}
+            return {
+                "commands": get_fallback_commands(request.request),
+                "status": "fallback",
+                "source": "local"
+            }
         
     except Exception as e:
         print(f"🔥 Version control error: {str(e)}")
-        return {"commands": get_fallback_commands(request.request), "status": "error_fallback"}
+        return {
+            "commands": get_fallback_commands(request.request),
+            "status": "error_fallback",
+            "source": "local_fallback"
+        }
 
 def get_fallback_commands(user_request):
     """Fallback version control commands"""
@@ -701,7 +843,7 @@ async def generate_portfolio(data: PortfolioData):
             "status": "fallback"
         }
 
-# NEW: Enhanced Portfolio Generator with AI
+# AI Portfolio Generator
 @app.post("/generate-ai-portfolio")
 async def generate_ai_portfolio(request: AIPortfolioRequest):
     """Generate portfolio using AI"""
@@ -966,13 +1108,16 @@ def generate_fallback_portfolio(data, user):
 </html>
 """
 
-# Existing Database Routes (unchanged)
+# Existing Database Routes
 @app.get("/skill-exercises/{user_id}")
 async def skill_exercises(user_id: int):
     """Get skill exercises for user"""
     try:
         exercises = database.get_skill_exercises(user_id)
-        return {"exercises": exercises}
+        return {
+            "exercises": exercises,
+            "status": "success"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -982,7 +1127,10 @@ async def complete_exercise(user_id: int, exercise_type: str):
     try:
         success = database.mark_exercise_complete(user_id, exercise_type)
         if success:
-            return {"message": "Exercise marked as complete"}
+            return {
+                "message": "Exercise marked as complete",
+                "status": "success"
+            }
         else:
             raise HTTPException(status_code=404, detail="Exercise not found")
     except Exception as e:
@@ -993,7 +1141,11 @@ async def project_history(user_id: int):
     """Get project history for user"""
     try:
         projects = database.get_project_history(user_id)
-        return {"projects": projects}
+        return {
+            "projects": projects,
+            "count": len(projects),
+            "status": "success"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1011,7 +1163,10 @@ async def add_project_history(project: AddProjectRequest):
         
         success = database.add_project_to_history(project.user_id, project_data)
         if success:
-            return {"message": "Project added to history"}
+            return {
+                "message": "Project added to history",
+                "status": "success"
+            }
         else:
             raise HTTPException(status_code=500, detail="Failed to add project")
     except Exception as e:
@@ -1042,13 +1197,14 @@ async def project_checklist(user_id: int):
         return {
             "checklist": checklist,
             "score": score,
-            "progress": f"{completed_exercises}/{total_exercises} exercises completed"
+            "progress": f"{completed_exercises}/{total_exercises} exercises completed",
+            "status": "success"
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# NEW: Test endpoints for new features
+# Test endpoints
 @app.get("/test-version-control")
 async def test_version_control():
     """Test endpoint for version control"""
@@ -1073,36 +1229,22 @@ async def test_portfolio():
         }
     }
 
-# Health and debug endpoints
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
+@app.get("/api-status")
+async def api_status():
+    """Get API status and available endpoints"""
     return {
-        "status": "healthy",
-        "backend": "running",
+        "status": "running",
         "version": "3.0",
-        "features": [
-            "AI Project Ideas",
-            "Skill Enhancement",
-            "Project Evaluation",
-            "Portfolio Generator",
-            "Version Control Helper",
-            "Code Snippet Generator",
-            "AI Portfolio Generator"
+        "timestamp": datetime.now().isoformat(),
+        "endpoints": [
+            {"path": "/register", "method": "POST", "description": "Register new user"},
+            {"path": "/login", "method": "POST", "description": "Login user"},
+            {"path": "/save-profile", "method": "POST", "description": "Save student profile"},
+            {"path": "/get-profile/{user_id}", "method": "GET", "description": "Get student profile"},
+            {"path": "/health", "method": "GET", "description": "Health check"},
+            {"path": "/debug/db", "method": "GET", "description": "Debug database"}
         ]
     }
-
-@app.get("/debug/users")
-async def debug_users():
-    """Debug: List all users"""
-    try:
-        users = database.get_all_users()
-        return {
-            "total_users": len(users),
-            "users": users
-        }
-    except Exception as e:
-        return {"error": str(e)}
 
 # Startup event
 @app.on_event("startup")
@@ -1116,14 +1258,22 @@ async def startup_event():
     print(f"📚 Docs available at: http://localhost:8000/docs")
     print(f"✨ Features: AI Project Ideas, Skill Enhancement, Project Evaluation, Portfolio Generator, Code Snippets")
     print(f"✨ New Features: Version Control Helper, AI Portfolio Generator")
+    
+    # Initialize database
+    database.init_db()
+    print("✅ Database initialized")
 
+# For Render deployment
 if __name__ == "__main__":
     import uvicorn
-    print("Starting server...")
+    
+    port = int(os.getenv("PORT", 8000))
+    
+    print(f"🚀 Starting server on port {port}...")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="debug"
+        port=port,
+        reload=True if os.getenv("ENV") == "development" else False,
+        log_level="info"
     )

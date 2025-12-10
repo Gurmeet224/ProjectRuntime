@@ -128,15 +128,19 @@ function initializeEventListeners() {
 }
 
 // Authentication Handlers (unchanged)
+// Authentication Handlers - FIXED
 async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/login`, {
+        const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
             body: JSON.stringify({ username, password })
         });
         
@@ -164,9 +168,12 @@ async function handleRegister(e) {
     const password = document.getElementById('registerPassword').value;
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/register`, {
+        const response = await fetch(`${API_BASE_URL}/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
             body: JSON.stringify({ username, password, email })
         });
         
@@ -196,9 +203,12 @@ async function handleStudentProfile(e) {
     };
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/save-profile`, {
+        const response = await fetch(`${API_BASE_URL}/save-profile`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
             body: JSON.stringify(profileData)
         });
         
@@ -216,10 +226,12 @@ async function handleStudentProfile(e) {
     }
 }
 
-// Profile Management (unchanged)
+// Profile Management - FIXED
 async function fetchUserProfile() {
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/get-profile/${currentUser.id}`);
+        const response = await fetch(`${API_BASE_URL}/get-profile/${currentUser.id}`, {
+            headers: { 'Accept': 'application/json' }
+        });
         if (response.ok) {
             userProfile = await response.json();
             localStorage.setItem('userProfile', JSON.stringify(userProfile));
@@ -235,7 +247,6 @@ async function fetchUserProfile() {
         showForm('student');
     }
 }
-
 // UI Navigation (unchanged)
 function showForm(formType) {
     // Hide all forms
