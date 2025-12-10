@@ -196,7 +196,7 @@ async function handleStudentProfile(e) {
     };
     
     try {
-        const response = await fetch(`${API_BASE_URL}/save-profile`, {
+        const response = await fetch(`https://projectruntime.onrender.com/save-profile`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(profileData)
@@ -219,7 +219,7 @@ async function handleStudentProfile(e) {
 // Profile Management (unchanged)
 async function fetchUserProfile() {
     try {
-        const response = await fetch(`${API_BASE_URL}/get-profile/${currentUser.id}`);
+        const response = await fetch(`https://projectruntime.onrender.com/get-profile/${currentUser.id}`);
         if (response.ok) {
             userProfile = await response.json();
             localStorage.setItem('userProfile', JSON.stringify(userProfile));
@@ -466,7 +466,7 @@ async function generateProjectIdeas() {
     showLoading('ideasResult', 'Generating AI project ideas...');
     
     try {
-        const response = await fetch(`${API_BASE_URL}/get-project-ideas`, {
+        const response = await fetch(`https://projectruntime.onrender.com/get-project-ideas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domain, skill_level: skillLevel, count })
@@ -981,7 +981,7 @@ async function generateDocumentation() {
     showLoading('docsResult', 'Generating AI documentation...');
     
     try {
-        const response = await fetch(`${API_BASE_URL}/generate-documentation`, {
+        const response = await fetch(`https://projectruntime.onrender.com/generate-documentation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_details: projectDetails })
@@ -1129,7 +1129,7 @@ async function generateCodeSnippet() {
     
     try {
         // First try backend API
-        const response = await fetch(`${API_BASE_URL}/generate-code-snippet`, {
+        const response = await fetch(`https://projectruntime.onrender.com/generate-code-snippet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1489,7 +1489,7 @@ async function loadSkillExercises() {
         // Get user's preferred skills/interests
         const skillPreferences = localStorage.getItem('skillPreferences') || 'coding';
         
-        const response = await fetch(`${API_BASE_URL}/get-skill-exercises`, {
+        const response = await fetch(`https://projectruntime.onrender.com/get-skill-exercises`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2104,7 +2104,7 @@ async function completeExercise(exerciseType) {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/complete-exercise/${currentUser.id}/${exerciseType}`, {
+        const response = await fetch(`https://projectruntime.onrender.com/complete-exercise/${currentUser.id}/${exerciseType}`, {
             method: 'POST'
         });
         
@@ -2165,7 +2165,7 @@ async function generateVersionControlHelp() {
     
     try {
         // First try backend API
-        const response = await fetch(`${API_BASE_URL}/version-control-help`, {
+        const response = await fetch(`https://projectruntime.onrender.com/version-control-help`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2234,7 +2234,7 @@ async function loadProjectHistory() {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/project-history/${currentUser.id}`);
+        const response = await fetch(`https://projectruntime.onrender.com/project-history/${currentUser.id}`);
         if (response.ok) {
             const data = await response.json();
             displayProjectHistory(data.projects);
@@ -2332,7 +2332,7 @@ async function handleAddProject(e) {
     };
     
     try {
-        const response = await fetch(`${API_BASE_URL}/add-project-history`, {
+        const response = await fetch(`https://projectruntime.onrender.com/add-project-history`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(projectData)
@@ -2359,7 +2359,7 @@ async function loadProjectChecklist() {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/project-checklist/${currentUser.id}`);
+        const response = await fetch(`https://projectruntime.onrender.com/project-checklist/${currentUser.id}`);
         if (response.ok) {
             const data = await response.json();
             displayProjectChecklist(data.checklist, data.score);
@@ -2616,7 +2616,7 @@ async function generatePortfolio() {
         }
         
         // Generate portfolio using backend API
-        const response = await fetch(`${API_BASE_URL}/generate-portfolio`, {
+        const response = await fetch(`https://projectruntime.onrender.com/generate-portfolio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(portfolioData)
