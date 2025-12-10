@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = 'https://projectruntime.onrender.com/';
+const API_BASE_URL = 'https://projectruntime.onrender.com';
 const OPENROUTER_API_KEY = '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';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
