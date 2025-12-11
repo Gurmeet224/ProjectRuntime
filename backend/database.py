@@ -36,14 +36,14 @@ def init_db():
         
         # Student profiles table
         c.execute('''CREATE TABLE IF NOT EXISTS student_profiles
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id INTEGER UNIQUE,
+                     (user_id INTEGER PRIMARY KEY,
                       college_name TEXT,
                       branch TEXT,
                       semester TEXT,
                       skill_level TEXT CHECK(skill_level IN ('beginner', 'intermediate', 'advanced')),
                       current_projects TEXT,
                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                       FOREIGN KEY (user_id) REFERENCES users (id))''')
         
         # Project history table
@@ -229,10 +229,14 @@ def get_user_by_id(user_id):
     finally:
         conn.close()
 
-# Student profile operations
-def save_student_profile(user_id, profile_data):
+# Student profile operations - FIXED VERSION
+def save_student_profile(user_id, college_name, branch, semester, skill_level, current_projects):
     """Save or update student profile"""
     print(f"📝 Saving profile for user_id: {user_id}")
+    
+    if not user_id:
+        print("❌ User ID is required")
+        return False
     
     conn = get_connection()
     if not conn:
@@ -242,50 +246,59 @@ def save_student_profile(user_id, profile_data):
         c = conn.cursor()
         
         # Check if profile exists
-        c.execute("SELECT id FROM student_profiles WHERE user_id = ?", (user_id,))
+        c.execute("SELECT user_id FROM student_profiles WHERE user_id = ?", (user_id,))
         existing = c.fetchone()
         
         if existing:
             # Update existing profile
             c.execute('''UPDATE student_profiles 
-                         SET college_name = ?, branch = ?, semester = ?, 
-                             skill_level = ?, current_projects = ?
+                         SET college_name = ?, 
+                             branch = ?, 
+                             semester = ?, 
+                             skill_level = ?, 
+                             current_projects = ?,
+                             updated_at = CURRENT_TIMESTAMP
                          WHERE user_id = ?''',
-                      (profile_data.get('college_name', ''),
-                       profile_data.get('branch', ''),
-                       profile_data.get('semester', ''),
-                       profile_data.get('skill_level', 'beginner'),
-                       profile_data.get('current_projects', ''),
+                      (college_name or '',
+                       branch or '',
+                       semester or '',
+                       skill_level or 'beginner',
+                       current_projects or '',
                        user_id))
-            print(f"✅ Updated profile for user_id: {user_id}")
+            print(f"✅ Updated existing profile for user_id: {user_id}")
         else:
             # Insert new profile
             c.execute('''INSERT INTO student_profiles 
                          (user_id, college_name, branch, semester, skill_level, current_projects)
                          VALUES (?, ?, ?, ?, ?, ?)''',
                       (user_id,
-                       profile_data.get('college_name', ''),
-                       profile_data.get('branch', ''),
-                       profile_data.get('semester', ''),
-                       profile_data.get('skill_level', 'beginner'),
-                       profile_data.get('current_projects', '')))
+                       college_name or '',
+                       branch or '',
+                       semester or '',
+                       skill_level or 'beginner',
+                       current_projects or ''))
             print(f"✅ Created new profile for user_id: {user_id}")
         
         conn.commit()
         
         # Assign initial exercises
-        assign_initial_exercises(user_id, profile_data.get('skill_level', 'beginner'))
+        assign_initial_exercises(user_id, skill_level or 'beginner')
         
         return True
         
     except sqlite3.Error as e:
         print(f"❌ Error saving profile: {e}")
+        conn.rollback()
         return False
     finally:
         conn.close()
 
 def get_student_profile(user_id):
     """Get student profile by user_id"""
+    if not user_id:
+        print("❌ User ID is required")
+        return None
+    
     conn = get_connection()
     if not conn:
         return None
@@ -315,7 +328,7 @@ def get_student_profile(user_id):
         conn.close()
 
 # Project history operations
-def add_project_to_history(user_id, project_data):
+def add_project_history(user_id, project_name, project_type, domain, status, notes):
     """Add project to user's history"""
     conn = get_connection()
     if not conn:
@@ -327,13 +340,13 @@ def add_project_to_history(user_id, project_data):
                      (user_id, project_name, project_type, domain, status, notes)
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (user_id,
-                   project_data.get('project_name', ''),
-                   project_data.get('project_type', ''),
-                   project_data.get('domain', ''),
-                   project_data.get('status', 'planned'),
-                   project_data.get('notes', '')))
+                   project_name or '',
+                   project_type or '',
+                   domain or '',
+                   status or 'planned',
+                   notes or ''))
         conn.commit()
-        print(f"✅ Added project '{project_data.get('project_name')}' to history for user_id: {user_id}")
+        print(f"✅ Added project '{project_name}' to history for user_id: {user_id}")
         return True
     except sqlite3.Error as e:
         print(f"❌ Error adding project to history: {e}")
@@ -461,7 +474,7 @@ def get_skill_exercises(user_id):
     finally:
         conn.close()
 
-def mark_exercise_complete(user_id, exercise_type):
+def complete_exercise(user_id, exercise_type):
     """Mark exercise as complete"""
     conn = get_connection()
     if not conn:
@@ -660,16 +673,38 @@ if __name__ == "__main__":
                 print(f"✅ Authentication test passed: {auth_id}")
                 
                 # Test profile save
-                profile_data = {
-                    "college_name": "Test College",
-                    "branch": "CSE",
-                    "semester": "5",
-                    "skill_level": "beginner",
-                    "current_projects": "Test Project"
-                }
-                save_student_profile(auth_id, profile_data)
-                print(f"✅ Profile saved")
-                
+                profile_saved = save_student_profile(
+                    auth_id,
+                    "Test College",
+                    "CSE",
+                    "5",
+                    "beginner",
+                    "Test Project"
+                )
+                if profile_saved:
+                    print(f"✅ Profile saved")
+                    
+                    # Test profile update
+                    profile_updated = save_student_profile(
+                        auth_id,
+                        "Updated College",
+                        "Updated Branch",
+                        "6",
+                        "intermediate",
+                        "Updated Project"
+                    )
+                    if profile_updated:
+                        print(f"✅ Profile updated")
+                    
+                    # Test getting profile
+                    profile = get_student_profile(auth_id)
+                    if profile:
+                        print(f"✅ Profile retrieved: {profile}")
+                    else:
+                        print("❌ Failed to retrieve profile")
+                else:
+                    print("❌ Failed to save profile")
+                    
             else:
                 print("❌ Authentication test failed")
         else:
@@ -680,4 +715,3 @@ else:
     # Initialize when imported
     init_db()
     print("📦 Database module loaded successfully")
-    reset_database()
