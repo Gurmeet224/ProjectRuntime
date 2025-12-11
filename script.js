@@ -449,6 +449,8 @@ async function generateProjectIdeas() {
             const data = await response.json();
             displayIdeas(data.ideas);
         } else {
+            const errorText = await response.text();
+            console.error('Backend error:', errorText);
             throw new Error('Failed to generate ideas');
         }
     } catch (error) {
@@ -567,8 +569,56 @@ function getFallbackIdeas(domain, skillLevel) {
     }];
 }
 
-function generateProjectPlan() {
+async function generateProjectPlan() {
     const projectName = document.getElementById('projectNameInput').value || 'My Project';
+    const projectDetails = `Project: ${projectName}
+Duration: ${document.getElementById('projectDuration').value || 4} weeks
+Team Size: ${document.getElementById('teamSize').value || 1} members
+Please generate a detailed project roadmap and development plan.`;
+    
+    if (!projectName.trim()) {
+        showError('Please enter project name');
+        return;
+    }
+    
+    showLoading('planResult', 'Generating AI project plan...');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/generate-documentation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_details: projectDetails })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayPlan(data.documentation);
+        } else {
+            throw new Error('Failed to generate project plan');
+        }
+    } catch (error) {
+        console.error('Error generating plan:', error);
+        generateProjectPlanLocal(projectName);
+    }
+}
+
+function displayPlan(plan) {
+    const resultDiv = document.getElementById('planResult');
+    
+    let planText = plan;
+    if (typeof plan === 'object') {
+        planText = plan.documentation || JSON.stringify(plan, null, 2);
+    }
+    
+    resultDiv.innerHTML = `
+        <h4>Generated Project Plan:</h4>
+        <div class="docs-content">
+            <pre>${planText}</pre>
+        </div>
+    `;
+}
+
+function generateProjectPlanLocal(projectName) {
     const duration = parseInt(document.getElementById('projectDuration').value) || 4;
     const teamSize = parseInt(document.getElementById('teamSize').value) || 1;
     
@@ -625,12 +675,15 @@ async function generateDocumentation() {
         if (response.ok) {
             const data = await response.json();
             displayDocumentation(data.documentation);
+            downloadDocumentation(data.documentation);
         } else {
             throw new Error('Failed to generate documentation');
         }
     } catch (error) {
         console.error('Error generating docs:', error);
-        displayDocumentation(generateFallbackDocs(projectDetails));
+        const fallbackDocs = generateFallbackDocs(projectDetails);
+        displayDocumentation(fallbackDocs);
+        downloadDocumentation(fallbackDocs);
     }
 }
 
@@ -648,7 +701,7 @@ function displayDocumentation(docs) {
             <pre>${documentation}</pre>
         </div>
         <div class="doc-actions">
-            <button class="btn" onclick="downloadDocumentation()">
+            <button class="btn" onclick="downloadGeneratedDocumentation()">
                 <i class="fas fa-download"></i> Download as TXT
             </button>
             <button class="btn" onclick="copyDocumentation()">
@@ -656,6 +709,31 @@ function displayDocumentation(docs) {
             </button>
         </div>
     `;
+}
+
+function downloadDocumentation(docs) {
+    let documentation = docs;
+    if (typeof docs === 'object') {
+        documentation = docs.documentation || JSON.stringify(docs, null, 2);
+    }
+    
+    const blob = new Blob([documentation], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'project_documentation.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function downloadGeneratedDocumentation() {
+    const docs = document.querySelector('.docs-content pre')?.textContent;
+    if (docs) {
+        downloadDocumentation(docs);
+        showSuccess('Documentation downloaded as project_documentation.txt');
+    }
 }
 
 function generateFallbackDocs(projectDetails) {
@@ -763,7 +841,6 @@ async function generateCodeSnippet() {
     showLoading('snippetResult', 'Generating AI code snippet...');
     
     try {
-        // First try backend API
         const response = await fetch(`${API_BASE_URL}/generate-code-snippet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -776,41 +853,17 @@ async function generateCodeSnippet() {
         
         if (response.ok) {
             const data = await response.json();
-            displayCodeSnippet(data.snippet, language);
+            displayCodeSnippet(data);
         } else {
-            // Fallback to direct OpenRouter API
-            const aiResponse = await generateCodeWithAI(language, prompt, complexity);
-            displayCodeSnippet(aiResponse, language);
+            throw new Error('Failed to generate code snippet');
         }
     } catch (error) {
         console.error('Error generating code:', error);
-        // Final fallback
-        displayCodeSnippet(getFallbackSnippet(prompt, language, complexity), language);
+        displayCodeSnippet(getFallbackSnippet(prompt, language, complexity));
     }
 }
 
-async function generateCodeWithAI(language, prompt, complexity) {
-    const aiPrompt = `Generate a ${complexity} level ${language} code snippet for: "${prompt}"
-    
-    Requirements:
-    1. Provide clean, well-commented code
-    2. Include error handling where appropriate
-    3. Add usage examples
-    4. Explain the code briefly
-    5. Format for readability
-    
-    Return as JSON with: title, code, explanation, usage_example`;
-    
-    const response = await fetchOpenRouterResponse(aiPrompt, true);
-    
-    if (response && response.code) {
-        return response;
-    } else {
-        return getFallbackSnippet(prompt, language, complexity);
-    }
-}
-
-function displayCodeSnippet(snippet, language) {
+function displayCodeSnippet(snippet) {
     const resultDiv = document.getElementById('snippetResult');
     
     if (!snippet || typeof snippet !== 'object') {
@@ -822,6 +875,7 @@ function displayCodeSnippet(snippet, language) {
         };
     }
     
+    const language = document.getElementById('codeLanguage').value;
     const languageClass = `language-${language}`;
     
     resultDiv.innerHTML = `
@@ -1016,7 +1070,8 @@ async function fetchOpenRouterResponse(prompt, jsonResponse = false) {
 async function loadSkillExercises() {
     if (!currentUser || !elements.skillExercises) return;
     
-    showLoading('skillExercises', 'Loading AI-generated exercises...');
+    // Show default skills first
+    displayDefaultSkills();
     
     try {
         const response = await fetch(`${API_BASE_URL}/get-skill-exercises`, {
@@ -1024,13 +1079,14 @@ async function loadSkillExercises() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 user_id: currentUser.id,
-                skill_level: userProfile?.skill_level 
+                skill_level: userProfile?.skill_level || 'beginner',
+                interests: userProfile?.current_projects || ''
             })
         });
         
         if (response.ok) {
             const data = await response.json();
-            displaySkillExercises(data.exercises);
+            displaySkillExercises(data.exercises || data);
         } else {
             throw new Error('Failed to load exercises');
         }
@@ -1040,15 +1096,84 @@ async function loadSkillExercises() {
     }
 }
 
-function displaySkillExercises(exercises) {
+function displayDefaultSkills() {
     if (!elements.skillExercises) return;
+    
+    const defaultSkills = [
+        {
+            title: 'HTML/CSS Fundamentals',
+            description: 'Master the basics of web structure and styling',
+            difficulty: 'Beginner',
+            estimated_time: '2-3 hours',
+            video_url: 'https://www.youtube.com/results?search_query=html+css+tutorial',
+            prerequisites: 'None',
+            success_criteria: 'Build a responsive webpage'
+        },
+        {
+            title: 'JavaScript Basics',
+            description: 'Learn variables, functions, and DOM manipulation',
+            difficulty: 'Beginner',
+            estimated_time: '3-4 hours',
+            video_url: 'https://www.youtube.com/results?search_query=javascript+tutorial',
+            prerequisites: 'Basic HTML/CSS',
+            success_criteria: 'Create an interactive web page'
+        },
+        {
+            title: 'Python Programming',
+            description: 'Learn Python syntax and basic programming concepts',
+            difficulty: 'Beginner',
+            estimated_time: '4-5 hours',
+            video_url: 'https://www.youtube.com/results?search_query=python+tutorial',
+            prerequisites: 'None',
+            success_criteria: 'Write a simple Python application'
+        }
+    ];
+    
+    let html = '<h4><i class="fas fa-brain"></i> AI-Generated Skill Exercises</h4>';
+    html += '<p class="subtitle">Personalized exercises based on your skill level</p>';
+    html += '<div class="default-skills-section">';
+    html += '<h5>Recommended Starting Skills:</h5>';
+    
+    defaultSkills.forEach((skill, index) => {
+        html += `
+            <div class="exercise-item">
+                <div class="exercise-content">
+                    <div class="exercise-header">
+                        <h5>${skill.title}</h5>
+                        <span class="difficulty ${skill.difficulty.toLowerCase()}">
+                            ${skill.difficulty}
+                        </span>
+                    </div>
+                    <p class="exercise-desc">${skill.description}</p>
+                    <p class="learning-objective">
+                        <i class="fas fa-bullseye"></i> 
+                        <strong>Goal:</strong> ${skill.success_criteria}
+                    </p>
+                    <p class="exercise-time">
+                        <i class="fas fa-clock"></i> ${skill.estimated_time}
+                    </p>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div><div id="aiExercisesContainer"></div>';
+    elements.skillExercises.innerHTML = html;
+}
+
+function displaySkillExercises(exercises) {
+    const container = document.getElementById('aiExercisesContainer');
+    if (!container) return;
     
     if (!exercises || !exercises.length) {
         exercises = getDefaultExercises();
     }
     
-    let html = '<h4><i class="fas fa-brain"></i> AI-Generated Skill Exercises</h4>';
-    html += '<p class="subtitle">Personalized exercises based on your skill level</p>';
+    if (!Array.isArray(exercises)) {
+        exercises = [exercises];
+    }
+    
+    let html = '<h5>AI-Recommended Learning Path:</h5>';
     
     exercises.forEach((exercise, index) => {
         const isCompleted = exercise.completed || false;
@@ -1113,7 +1238,7 @@ function displaySkillExercises(exercises) {
         `;
     });
     
-    elements.skillExercises.innerHTML = html;
+    container.innerHTML = html;
 }
 
 function getVideoLinks(videoData) {
@@ -1222,10 +1347,20 @@ async function generateVersionControlHelp() {
         return;
     }
     
+    // Check if request is for commands only
+    const forbiddenKeywords = ['code', 'project', 'snippet', 'example', 'algorithm', 'program', 'function', 'application'];
+    const hasForbidden = forbiddenKeywords.some(keyword => 
+        request.toLowerCase().includes(keyword.toLowerCase())
+    );
+    
+    if (hasForbidden) {
+        showError('This mode only generates commands. Please ask for version control commands only.');
+        return;
+    }
+    
     showLoading('vcResult', 'Generating AI-powered help...');
     
     try {
-        // Try backend API first
         const response = await fetch(`${API_BASE_URL}/get-version-control-help`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1237,33 +1372,14 @@ async function generateVersionControlHelp() {
         
         if (response.ok) {
             const data = await response.json();
-            displayVCResult(data.commands);
+            displayVCResult(data.commands || data);
         } else {
-            // Fallback to direct AI call
-            const aiResponse = await generateVCWithAI(request);
-            displayVCResult(aiResponse);
+            throw new Error('Failed to generate version control help');
         }
     } catch (error) {
         console.error('Error generating VC help:', error);
         displayVCResult(getFallbackVCCommands(request));
     }
-}
-
-async function generateVCWithAI(request) {
-    const aiPrompt = `User is asking for version control help: "${request}"
-    
-    Provide a comprehensive guide including:
-    1. Relevant commands (Git, Docker, GitHub, etc.)
-    2. Explanation of each command
-    3. Common use cases
-    4. Best practices
-    5. Troubleshooting tips
-    6. Examples with code blocks
-    
-    Format with clear sections and use markdown code blocks for commands.
-    Make it beginner-friendly if needed.`;
-    
-    return await fetchOpenRouterResponse(aiPrompt);
 }
 
 function displayVCResult(commands) {
@@ -1544,8 +1660,8 @@ function displayProjectHistory(projects) {
                     ${project.notes ? `<p><i class="fas fa-sticky-note"></i> <strong>Notes:</strong> ${project.notes}</p>` : ''}
                 </div>
                 <div class="project-actions">
-                    <button class="btn-small" onclick="evaluateProjectById('${project.project_name}')">
-                        <i class="fas fa-search"></i> Evaluate
+                    <button class="btn-small" onclick="showProjectDetails('${project.project_name}')">
+                        <i class="fas fa-search"></i> Details
                     </button>
                 </div>
             </div>
@@ -1553,6 +1669,10 @@ function displayProjectHistory(projects) {
     });
     
     elements.projectHistoryDiv.innerHTML = html;
+}
+
+function showProjectDetails(projectName) {
+    alert(`Project: ${projectName}\nDetails feature coming soon!`);
 }
 
 function formatDate(dateString) {
@@ -1609,296 +1729,9 @@ async function handleAddProject(e) {
     }
 }
 
-// Project Evaluation Functions
-async function evaluateProject() {
-    const projectDescription = elements.projectDescription.value;
-    
-    if (!projectDescription.trim()) {
-        showError('Please describe your project');
-        return;
-    }
-    
-    showLoading('evaluationResult', 'AI is evaluating your project...');
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/evaluate-project`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                project_description: projectDescription,
-                user_id: currentUser?.id 
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            displayEvaluationResult(data.evaluation);
-        } else {
-            throw new Error('Failed to evaluate project');
-        }
-    } catch (error) {
-        console.error('Error evaluating project:', error);
-        displayEvaluationResult(generateManualEvaluation(projectDescription));
-    }
-}
-
-function displayEvaluationResult(evaluation) {
-    let evalData = evaluation;
-    
-    // Parse if it's a string
-    if (typeof evaluation === 'string') {
-        try {
-            evalData = JSON.parse(evaluation);
-        } catch (e) {
-            evalData = generateManualEvaluation(evaluation);
-        }
-    }
-    
-    const score = evalData.score || 75;
-    const strengths = Array.isArray(evalData.strengths) ? evalData.strengths : [evalData.strengths || 'Good structure'];
-    const weaknesses = Array.isArray(evalData.weaknesses) ? evalData.weaknesses : [evalData.weaknesses || 'Need more details'];
-    const missing = Array.isArray(evalData.missing_elements) ? evalData.missing_elements : [evalData.missing_elements || 'Timeline'];
-    const improvements = Array.isArray(evalData.improvement_suggestions) ? evalData.improvement_suggestions : [evalData.improvement_suggestions || 'Add more technical details'];
-    const technical = Array.isArray(evalData.technical_recommendations) ? evalData.technical_recommendations : [evalData.technical_recommendations || 'Use version control'];
-    const feedback = evalData.overall_feedback || 'Good project concept with clear objectives.';
-    
-    // Create score circle with dynamic color
-    const scoreColor = getScoreColor(score);
-    elements.scoreDisplay.innerHTML = `
-        <div class="score-container">
-            <div class="score-circle" style="background: conic-gradient(${scoreColor} ${score}%, #f0f0f0 0%);">
-                <span>${score}/100</span>
-            </div>
-            <div class="score-details">
-                <h5>Project Score</h5>
-                <p class="score-feedback">${feedback}</p>
-                ${evalData.estimated_timeline ? `<p><i class="fas fa-clock"></i> <strong>Estimated Timeline:</strong> ${evalData.estimated_timeline}</p>` : ''}
-            </div>
-        </div>
-    `;
-    
-    // Create recommendations with all sections
-    let recommendationsHTML = '<div class="evaluation-sections">';
-    
-    // Strengths section
-    if (strengths.length > 0) {
-        recommendationsHTML += `
-            <div class="evaluation-section strength">
-                <h5><i class="fas fa-check-circle"></i> Strengths</h5>
-                <ul>${strengths.map(s => `<li>${s}</li>`).join('')}</ul>
-            </div>
-        `;
-    }
-    
-    // Areas for improvement
-    if (weaknesses.length > 0) {
-        recommendationsHTML += `
-            <div class="evaluation-section improvement">
-                <h5><i class="fas fa-tools"></i> Areas for Improvement</h5>
-                <ul>${weaknesses.map(w => `<li>${w}</li>`).join('')}</ul>
-            </div>
-        `;
-    }
-    
-    // Missing elements
-    if (missing.length > 0) {
-        recommendationsHTML += `
-            <div class="evaluation-section missing">
-                <h5><i class="fas fa-search-minus"></i> Missing Elements</h5>
-                <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
-            </div>
-        `;
-    }
-    
-    // Improvement suggestions
-    if (improvements.length > 0) {
-        recommendationsHTML += `
-            <div class="evaluation-section suggestions">
-                <h5><i class="fas fa-lightbulb"></i> Improvement Suggestions</h5>
-                <ul>${improvements.map(i => `<li>${i}</li>`).join('')}</ul>
-            </div>
-        `;
-    }
-    
-    // Technical recommendations
-    if (technical.length > 0) {
-        recommendationsHTML += `
-            <div class="evaluation-section technical">
-                <h5><i class="fas fa-code"></i> Technical Recommendations</h5>
-                <ul>${technical.map(t => `<li>${t}</li>`).join('')}</ul>
-            </div>
-        `;
-    }
-    
-    // Required skills
-    if (evalData.required_skills && Array.isArray(evalData.required_skills)) {
-        recommendationsHTML += `
-            <div class="evaluation-section skills">
-                <h5><i class="fas fa-graduation-cap"></i> Required Skills</h5>
-                <div class="skill-tags">
-                    ${evalData.required_skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    recommendationsHTML += '</div>';
-    
-    elements.recommendations.innerHTML = recommendationsHTML;
-    elements.evaluationResult.style.display = 'block';
-}
-
-function getScoreColor(score) {
-    if (score >= 80) return '#4CAF50'; // Green
-    if (score >= 60) return '#FFC107'; // Yellow
-    if (score >= 40) return '#FF9800'; // Orange
-    return '#F44336'; // Red
-}
-
-function generateManualEvaluation(description) {
-    let score = 50;
-    const strengths = [];
-    const weaknesses = [];
-    const missing = [];
-    const improvements = [];
-    const technical = [];
-    
-    // Simple evaluation logic
-    if (description.length > 100) score += 15;
-    if (description.includes('objective') || description.includes('goal')) {
-        score += 10;
-        strengths.push('Clear objectives defined');
-    } else {
-        weaknesses.push('No clear objectives defined');
-        missing.push('Project goals and objectives');
-    }
-    
-    if (description.includes('technology') || description.includes('framework')) {
-        score += 10;
-        strengths.push('Technology stack mentioned');
-    } else {
-        weaknesses.push('Technology stack not specified');
-        missing.push('Technical specifications');
-    }
-    
-    if (description.includes('method') || description.includes('approach')) {
-        score += 10;
-        strengths.push('Methodology described');
-    } else {
-        weaknesses.push('Development methodology missing');
-        missing.push('Implementation approach');
-    }
-    
-    if (description.includes('result') || description.includes('outcome')) {
-        score += 5;
-        strengths.push('Expected outcomes mentioned');
-    } else {
-        weaknesses.push('Expected outcomes not specified');
-        missing.push('Success criteria');
-    }
-    
-    // Add improvement suggestions
-    if (score > 80) {
-        improvements.push('Consider adding user testing phase');
-        improvements.push('Implement monitoring and analytics');
-        technical.push('Consider using Docker for containerization');
-        technical.push('Implement automated testing pipeline');
-    } else if (score > 60) {
-        improvements.push('Add detailed project timeline');
-        improvements.push('Include risk assessment');
-        technical.push('Use Git for version control');
-        technical.push('Implement error logging');
-    } else {
-        improvements.push('Expand project description with more details');
-        improvements.push('Define clear milestones and deliverables');
-        technical.push('Learn basic Git commands');
-        technical.push('Start with simple technology stack');
-    }
-    
-    return {
-        score: Math.min(score, 100),
-        strengths: strengths.length > 0 ? strengths : ['Project idea identified'],
-        weaknesses: weaknesses.length > 0 ? weaknesses : ['Need more detailed planning'],
-        missing_elements: missing.length > 0 ? missing : ['Detailed requirements'],
-        improvement_suggestions: improvements,
-        technical_recommendations: technical,
-        overall_feedback: score > 70 ? 'Good foundation, needs refinement' : 'Basic concept, requires significant development',
-        estimated_timeline: score > 70 ? '4-6 weeks' : '8-12 weeks',
-        required_skills: ['Problem Solving', 'Basic Programming', 'Documentation']
-    };
-}
-
-async function loadProjectChecklist() {
-    if (!currentUser) return;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/project-checklist/${currentUser.id}`);
-        if (response.ok) {
-            const data = await response.json();
-            displayProjectChecklist(data.checklist, data.score);
-        }
-    } catch (error) {
-        console.error('Error loading checklist:', error);
-        displayProjectChecklist({
-            idea_defined: false,
-            profile_complete: userProfile !== null,
-            documentation_started: false,
-            code_structured: false,
-            testing_done: false,
-            deployment_ready: false
-        }, 0);
-    }
-}
-
-function displayProjectChecklist(checklist, score) {
-    if (!elements.projectChecklist) return;
-    
-    const items = [
-        { id: 'idea_defined', label: 'Project idea clearly defined', icon: 'fa-lightbulb' },
-        { id: 'profile_complete', label: 'Student profile completed', icon: 'fa-user' },
-        { id: 'documentation_started', label: 'Documentation started', icon: 'fa-file' },
-        { id: 'code_structured', label: 'Code properly structured', icon: 'fa-code' },
-        { id: 'testing_done', label: 'Testing completed', icon: 'fa-vial' },
-        { id: 'deployment_ready', label: 'Ready for deployment', icon: 'fa-rocket' }
-    ];
-    
-    const scoreColor = getScoreColor(score);
-    let html = `<div class="score-header" style="border-left-color: ${scoreColor}">
-        <div class="score-text">Project Readiness Score</div>
-        <div class="score-value">${score}%</div>
-    </div>`;
-    
-    items.forEach(item => {
-        const isComplete = checklist[item.id];
-        html += `
-            <div class="checklist-item ${isComplete ? 'completed' : ''}">
-                <div class="checklist-check">
-                    <input type="checkbox" ${isComplete ? 'checked' : ''} disabled>
-                    <span class="checkmark"></span>
-                </div>
-                <div class="checklist-content">
-                    <i class="fas ${item.icon}"></i>
-                    <label>${item.label}</label>
-                </div>
-                ${isComplete ? '<span class="check-status"><i class="fas fa-check"></i></span>' : ''}
-            </div>
-        `;
-    });
-    
-    // Add progress bar
-    const completedCount = items.filter(item => checklist[item.id]).length;
-    const progressPercent = (completedCount / items.length) * 100;
-    
-    html += `
-        <div class="progress-summary">
-            <div class="progress-bar-container">
-                <div class="progress-bar" style="width: ${progressPercent}%"></div>
-            </div>
-            <div class="progress-text">${completedCount} of ${items.length} completed</div>
-        </div>
-    `;
-    
-    elements.projectChecklist.innerHTML = html;
+// Project Evaluation Functions - DISABLED
+function evaluateProject() {
+    showError('Project evaluation feature is temporarily disabled. Please check back later.');
 }
 
 // Portfolio Functions - FIXED
@@ -2023,117 +1856,125 @@ async function generatePortfolio() {
         
         if (response.ok) {
             const data = await response.json();
-            displayPortfolioPreview(data.portfolio_html);
-            showSuccess('Portfolio generated successfully!');
+            if (data.portfolio_html) {
+                // Open portfolio in new tab
+                const newTab = window.open();
+                newTab.document.write(data.portfolio_html);
+                newTab.document.close();
+                
+                // Also offer download
+                downloadPortfolioFile(data.portfolio_html, data.filename || 'portfolio.html');
+                showSuccess('Portfolio generated and opened in new tab!');
+            }
         } else {
-            // Fallback to frontend generation
-            const fallbackHTML = generateFallbackPortfolio(portfolioData);
-            displayPortfolioPreview(fallbackHTML);
-            showSuccess('Portfolio generated (fallback mode)!');
+            throw new Error('Failed to generate portfolio');
         }
     } catch (error) {
         console.error('Error generating portfolio:', error);
-        showError('Failed to generate portfolio. Please try again.');
+        // Fallback to frontend generation
+        const fallbackHTML = generateFallbackPortfolio();
+        const newTab = window.open();
+        newTab.document.write(fallbackHTML);
+        newTab.document.close();
+        downloadPortfolioFile(fallbackHTML, 'portfolio_fallback.html');
+        showSuccess('Portfolio generated (fallback mode)!');
     }
 }
 
-function displayPortfolioPreview(html) {
-    const preview = document.getElementById('portfolioPreview');
-    if (!preview) return;
-    
-    // Create iframe for preview
-    preview.innerHTML = `
-        <div class="portfolio-preview-container">
-            <div class="preview-header">
-                <h5><i class="fas fa-eye"></i> Portfolio Preview</h5>
-                <div class="preview-actions">
-                    <button class="btn-small" onclick="downloadPortfolio()">
-                        <i class="fas fa-download"></i> Download HTML
-                    </button>
-                    <button class="btn-small" onclick="printPortfolio()">
-                        <i class="fas fa-print"></i> Print as PDF
-                    </button>
-                </div>
-            </div>
-            <div class="preview-content">
-                ${html}
-            </div>
-        </div>
-    `;
+function downloadPortfolioFile(html, filename) {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
-function generateFallbackPortfolio(data) {
+function generateFallbackPortfolio() {
     return `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${data.name} - Portfolio</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-                .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-                .header { text-align: center; padding: 50px 0; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; margin-bottom: 30px; }
-                .project-card { background: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-                .skills-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
-                .skill-tag { background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
-                .contact-info { background: white; padding: 20px; border-radius: 10px; margin-top: 30px; }
-                @media print {
-                    body { background: white; }
-                    .no-print { display: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>${data.name}</h1>
-                <p>${data.education.college || 'Student'} | ${data.education.branch || 'Computer Science'}</p>
-                <p>Portfolio - ${data.education.year || '2024'}</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${currentUser?.username || 'Student'} - Portfolio</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 50px 0; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; margin-bottom: 30px; }
+        .project-card { background: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .skills-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+        .skill-tag { background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+        .contact-info { background: white; padding: 20px; border-radius: 10px; margin-top: 30px; }
+        @media print {
+            body { background: white; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>${currentUser?.username || 'Student Portfolio'}</h1>
+        <p>${userProfile?.college_name || 'Computer Science Student'}</p>
+        <p>Portfolio - ${new Date().getFullYear()}</p>
+    </div>
+    
+    <div class="container">
+        <section>
+            <h2>About Me</h2>
+            <p>${userProfile?.current_projects || 'Passionate student developer focused on building innovative projects and learning new technologies.'}</p>
+        </section>
+        
+        <section>
+            <h2>Skills</h2>
+            <div class="skills-list">
+                <span class="skill-tag">HTML/CSS</span>
+                <span class="skill-tag">JavaScript</span>
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">FastAPI</span>
+                <span class="skill-tag">SQLite</span>
+                <span class="skill-tag">Git</span>
             </div>
-            
-            <div class="container">
-                <section>
-                    <h2>About Me</h2>
-                    <p>${data.contact.bio || 'Passionate student developer focused on building innovative projects and learning new technologies.'}</p>
-                </section>
-                
-                <section>
-                    <h2>Skills</h2>
-                    <div class="skills-list">
-                        ${data.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-                    </div>
-                </section>
-                
-                <section>
-                    <h2>Projects</h2>
-                    ${data.projects.map(project => `
-                        <div class="project-card">
-                            <h3>${project.name}</h3>
-                            <p>${project.description}</p>
-                            <p><strong>Technologies:</strong> ${project.technologies}</p>
-                            <p><strong>Status:</strong> ${project.status}</p>
-                        </div>
-                    `).join('')}
-                </section>
-                
-                <section class="contact-info">
-                    <h2>Contact Information</h2>
-                    <p><strong>Email:</strong> ${data.contact.email || 'Not provided'}</p>
-                    <p><strong>GitHub:</strong> ${data.contact.github || 'Not provided'}</p>
-                    <p><strong>LinkedIn:</strong> ${data.contact.linkedin || 'Not provided'}</p>
-                    <p><strong>Phone:</strong> ${data.contact.phone || 'Not provided'}</p>
-                </section>
-            </div>
-            
-            <div class="no-print" style="text-align: center; margin: 40px 0;">
-                <p style="color: #666; font-size: 14px;">Generated by Smart Project Assistant</p>
-            </div>
-        </body>
-        </html>
+        </section>
+        
+        <section>
+            <h2>Projects</h2>
+            ${projectHistory.length > 0 ? projectHistory.map(project => `
+                <div class="project-card">
+                    <h3>${project.project_name}</h3>
+                    <p>${project.notes || 'No description available'}</p>
+                    <p><strong>Technologies:</strong> ${project.domain || 'Various'}</p>
+                    <p><strong>Status:</strong> ${project.status || 'completed'}</p>
+                </div>
+            `).join('') : `
+                <div class="project-card">
+                    <h3>Smart Project Assistant</h3>
+                    <p>A comprehensive project management system with AI-powered features for students.</p>
+                    <p><strong>Technologies:</strong> HTML, CSS, JavaScript, Python, FastAPI</p>
+                    <p><strong>Status:</strong> Completed</p>
+                </div>
+            `}
+        </section>
+        
+        <section class="contact-info">
+            <h2>Contact Information</h2>
+            <p><strong>College:</strong> ${userProfile?.college_name || 'Not provided'}</p>
+            <p><strong>Branch:</strong> ${userProfile?.branch || 'Not provided'}</p>
+            <p><strong>Semester:</strong> ${userProfile?.semester || 'Not provided'}</p>
+        </section>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin: 40px 0;">
+        <p style="color: #666; font-size: 14px;">Generated by Smart Project Assistant</p>
+    </div>
+</body>
+</html>
     `;
 }
 
-// Fixed Portfolio Download Functions
 function generateReadme() {
     if (!currentUser || !userProfile) {
         showError('Please complete your profile first');
@@ -2604,32 +2445,6 @@ function generatePortfolioPage() {
     showSuccess('Portfolio page generated and downloaded!');
 }
 
-function downloadPortfolio() {
-    const previewContent = document.querySelector('.preview-content');
-    if (!previewContent) {
-        showError('No portfolio preview available');
-        return;
-    }
-    
-    const html = previewContent.innerHTML;
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `portfolio_${currentUser.username}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Portfolio downloaded!');
-}
-
-function printPortfolio() {
-    window.print();
-    showSuccess('Portfolio ready for printing/saving as PDF');
-}
-
 // Utility Functions
 function showLoading(elementId, message = 'Loading...') {
     const element = document.getElementById(elementId);
@@ -2790,7 +2605,7 @@ window.handleAddProject = handleAddProject;
 window.evaluateProject = evaluateProject;
 window.generateReadme = generateReadme;
 window.generatePortfolioPage = generatePortfolioPage;
-window.downloadDocumentation = downloadDocumentation;
+window.downloadGeneratedDocumentation = downloadGeneratedDocumentation;
 window.downloadGitGuide = downloadGitGuide;
 window.openVersionControlHelper = openVersionControlHelper;
 window.closeVersionControlModal = closeVersionControlModal;
@@ -2802,5 +2617,4 @@ window.closePortfolioBuilder = closePortfolioBuilder;
 window.addSkill = addSkill;
 window.removeSkill = removeSkill;
 window.generatePortfolio = generatePortfolio;
-window.downloadPortfolio = downloadPortfolio;
-window.printPortfolio = printPortfolio;
+window.showProjectDetails = showProjectDetails;
