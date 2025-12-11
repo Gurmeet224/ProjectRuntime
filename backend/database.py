@@ -680,3 +680,4 @@ else:
     # Initialize when imported
     init_db()
     print("📦 Database module loaded successfully")
+    reset_database()

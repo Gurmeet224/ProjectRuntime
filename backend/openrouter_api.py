@@ -9,7 +9,7 @@ class OpenRouterAI:
     def __init__(self):
         self.api_key = os.getenv('OPENROUTER_API_KEY')
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "openai/gpt-4o-mini"   # much better than 3.5
+        self.model = "deepseek/deepseek-chat"
 
     ###########################################################################
     # INTERNAL API CALL FUNCTION
@@ -54,9 +54,9 @@ class OpenRouterAI:
             return {"error": str(e)}
 
     ###########################################################################
-    # 1) FIXED: PROJECT IDEA GENERATOR
+    # 1) PROJECT IDEA GENERATOR
     ###########################################################################
-    def get_project_ideas(self, domain, skill_level, count=5):
+    def generate_project_ideas(self, domain, skill_level, count=5):
         prompt = f"""
         Generate {count} unique, practical {domain} project ideas suitable for {skill_level} students.
 
@@ -75,10 +75,176 @@ class OpenRouterAI:
         }}
         """
 
-        return self._call_api(prompt, json_response=True)
+        result = self._call_api(prompt, json_response=True)
+        if isinstance(result, dict) and "error" in result:
+            return result
+        return result
+
+    def get_project_ideas(self, domain, skill_level, count=5):
+        return self.generate_project_ideas(domain, skill_level, count)
 
     ###########################################################################
-    # 2) NEW: PROJECT PLANNER ROADMAP
+    # 2) DOCUMENTATION GENERATOR (TEXT FILE CONTENT)
+    ###########################################################################
+    def generate_documentation(self, project_details):
+        prompt = f"""
+        Generate FULL project documentation in clean TEXT format, no markdown.
+
+        PROJECT DETAILS:
+        {project_details}
+
+        INCLUDE:
+        - Overview
+        - Objectives
+        - Tech Stack
+        - Architecture
+        - Features
+        - Installation
+        - Usage
+        - API Reference
+        - Deployment
+        - Future Enhancements
+
+        Return plain text only.
+        """
+
+        result = self._call_api(prompt)
+        if isinstance(result, dict) and "error" in result:
+            return {"documentation": f"Error generating documentation: {result['error']}"}
+        return {"documentation": result}
+
+    ###########################################################################
+    # 3) CODE SNIPPET GENERATOR
+    ###########################################################################
+    def generate_code_snippet(self, language, prompt, complexity="beginner"):
+        full_prompt = f"""
+        Generate a {complexity} level {language} code snippet for: "{prompt}"
+
+        Return STRICT JSON:
+        {{
+            "title": "Descriptive title for the code snippet",
+            "code": "The complete code with proper formatting and comments",
+            "explanation": "Clear explanation of what the code does and how it works",
+            "usage_example": "Example of how to use or call the code"
+        }}
+
+        Make sure the code is suitable for {complexity} level programmers.
+        Include proper comments and error handling where appropriate.
+        """
+
+        result = self._call_api(full_prompt, json_response=True)
+        if isinstance(result, dict) and "error" in result:
+            # Fallback structure
+            return {
+                "title": f"{language.title()} Code for: {prompt}",
+                "code": f"# {prompt}\n# Code generation failed\n# Please try again",
+                "explanation": f"This code would implement {prompt}",
+                "usage_example": "Example usage would go here"
+            }
+        return result
+
+    ###########################################################################
+    # 4) SKILL ENHANCEMENT AI
+    ###########################################################################
+    def generate_skill_recommendations(self, skill_level, interests, user_id=None):
+        prompt = f"""
+        Generate personalized skill exercises and learning recommendations for a {skill_level} level student.
+
+        Student interests: {interests}
+
+        Return STRICT JSON with an array of exercises:
+        [
+            {{
+                "title": "Exercise Title",
+                "description": "Detailed description of the exercise",
+                "difficulty": "Beginner/Intermediate/Advanced",
+                "estimated_time": "2-3 hours",
+                "video_url": "YouTube search URL for relevant tutorials"
+            }}
+        ]
+
+        Generate 3-5 practical exercises that cover different aspects of programming.
+        Make them hands-on and implementable.
+        """
+
+        result = self._call_api(prompt, json_response=True)
+        if isinstance(result, dict) and "error" in result:
+            return result
+        return result
+
+    def generate_skill_exercises(self, skill_level, interests, user_id=None):
+        return self.generate_skill_recommendations(skill_level, interests, user_id)
+
+    ###########################################################################
+    # 5) VERSION CONTROL MODE (COMMANDS ONLY)
+    ###########################################################################
+    def generate_version_control_help(self, request):
+        # If user asks for code → give error
+        forbidden_words = ["code", "program", "script", "build", "function"]
+
+        if any(word in request.lower() for word in forbidden_words):
+            return {"error": "This mode ONLY generates commands. Not code."}
+
+        prompt = f"""
+        User needs commands for: "{request}"
+
+        Generate ONLY commands (Git, Docker, CMD, PowerShell, Linux commands).
+
+        Return STRICT JSON:
+        {{
+            "commands": "Complete guide text with commands and explanations"
+        }}
+
+        Format with clear sections and use markdown code blocks for commands.
+        """
+
+        result = self._call_api(prompt, json_response=True)
+        if isinstance(result, dict) and "error" in result:
+            return result
+        return result
+
+    def version_control_commands(self, request):
+        return self.generate_version_control_help(request)
+
+    ###########################################################################
+    # 6) MODERN HTML PORTFOLIO GENERATOR
+    ###########################################################################
+    def generate_portfolio_html(self, data):
+        prompt = f"""
+        Create a MODERN portfolio HTML (FULL DOCUMENT) with animations.
+
+        USER INFO:
+        {json.dumps(data, indent=2)}
+
+        Requirements:
+        - Fully responsive modern UI
+        - Smooth animations
+        - Sections:
+            - Name
+            - Contact
+            - College Name
+            - About/Bio
+            - Tech Stack (grid)
+            - Projects (cards)
+            - Footer
+        - Clean CSS inside <style>
+        - Attractive buttons
+        - Glassmorphism style
+        - No external dependencies except Google Fonts
+
+        Return the complete HTML code as a string.
+        """
+
+        result = self._call_api(prompt)
+        if isinstance(result, dict) and "error" in result:
+            return {"html": "<html><body><h1>Error generating portfolio</h1></body></html>"}
+        return {"html": result}
+
+    def generate_portfolio(self, data):
+        return self.generate_portfolio_html(data)
+
+    ###########################################################################
+    # 7) PROJECT PLANNER ROADMAP (for backward compatibility)
     ###########################################################################
     def generate_project_roadmap(self, project_name, details, members, time_limit):
         prompt = f"""
@@ -109,135 +275,5 @@ class OpenRouterAI:
         """
 
         return self._call_api(prompt, json_response=True)
-
-    ###########################################################################
-    # 3) DOCUMENTATION GENERATOR (TEXT FILE CONTENT)
-    ###########################################################################
-    def generate_documentation(self, project_details):
-        prompt = f"""
-        Generate FULL project documentation in clean TEXT format, no markdown.
-
-        PROJECT DETAILS:
-        {project_details}
-
-        INCLUDE:
-        - Overview
-        - Objectives
-        - Tech Stack
-        - Architecture
-        - Features
-        - Installation
-        - Usage
-        - API Reference
-        - Deployment
-        - Future Enhancements
-
-        Return plain text only.
-        """
-
-        return self._call_api(prompt)
-
-    ###########################################################################
-    # 4) FIXED & UPDATED: CODE SNIPPET GENERATOR
-    ###########################################################################
-    def generate_code_snippet(self, language, user_prompt):
-        prompt = f"""
-        Generate code in {language} for: "{user_prompt}"
-
-        Return STRICT JSON:
-        {{
-            "title": "title",
-            "code": "full code here",
-            "explanation": "explain the code",
-            "example": "example input/output"
-        }}
-        """
-
-        return self._call_api(prompt, json_response=True)
-
-    ###########################################################################
-    # SKILL ENHANCEMENT AI
-    ###########################################################################
-    def generate_skill_recommendations(self, skill_prompt):
-        prompt = f"""
-        User wants skill improvement help: "{skill_prompt}"
-
-        Recommend:
-        - Courses (links)
-        - YouTube videos (real links)
-        - Documentation
-        - Roadmap
-        - Practice tasks
-
-        Return STRICT JSON:
-        {{
-            "recommendations": [
-                {{
-                    "title": "...",
-                    "description": "...",
-                    "links": ["...", "..."],
-                    "practice": ["...", "..."]
-                }}
-            ]
-        }}
-        """
-        return self._call_api(prompt, json_response=True)
-
-    ###########################################################################
-    # VERSION CONTROL MODE (COMMANDS ONLY)
-    ###########################################################################
-    def version_control_commands(self, user_prompt):
-        # If user asks for code → give error
-        forbidden_words = ["code", "program", "script", "build", "function"]
-
-        if any(word in user_prompt.lower() for word in forbidden_words):
-            return {"error": "This mode ONLY generates commands. Not code."}
-
-        prompt = f"""
-        User needs commands for: "{user_prompt}"
-
-        Generate ONLY commands (Git, CMD, PowerShell, Docker, Linux).
-
-        Return STRICT JSON:
-        {{
-            "commands": [
-                {{
-                    "command": "the command",
-                    "explanation": "what it does"
-                }}
-            ]
-        }}
-        """
-
-        return self._call_api(prompt, json_response=True)
-
-    ###########################################################################
-    # MODERN HTML PORTFOLIO GENERATOR
-    ###########################################################################
-    def generate_portfolio(self, data):
-        prompt = f"""
-        Create a MODERN portfolio HTML (FULL DOCUMENT) with animations.
-
-        USER INFO:
-        {json.dumps(data, indent=2)}
-
-        Requirements:
-        - Fully responsive modern UI
-        - Smooth animations
-        - Sections:
-            - Name
-            - Contact
-            - College Name
-            - About/Bio
-            - Tech Stack (grid)
-            - Projects (cards)
-            - Footer
-        - Clean CSS inside <style>
-        - Attractive buttons
-        - Glassmorphism style
-        - No external dependencies except Google Fonts
-        """
-
-        return self._call_api(prompt)
 
 # END OF FILE
