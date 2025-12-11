@@ -184,6 +184,9 @@
                         <button class="tab-btn" data-tab="version-control">
                             <i class="fas fa-code-branch"></i> Version Control
                         </button>
+                        <button class="tab-btn" data-tab="evaluation">
+                            <i class="fas fa-clipboard-check"></i> Project Evaluation
+                        </button>
                         <button class="tab-btn" data-tab="portfolio">
                             <i class="fas fa-briefcase"></i> Portfolio
                         </button>
@@ -210,8 +213,8 @@
                                     <div class="feature-icon">
                                         <i class="fas fa-project-diagram"></i>
                                     </div>
-                                    <h4>Enhanced Project Planning</h4>
-                                    <p>Detailed timelines with AI optimization</p>
+                                    <h4>Project Planning</h4>
+                                    <p>Create timelines and Gantt charts</p>
                                 </div>
                                 
                                 <div class="feature-card" onclick="openFeature('documentation')">
@@ -227,7 +230,7 @@
                                         <i class="fas fa-code"></i>
                                     </div>
                                     <h4>Code Snippets</h4>
-                                    <p>Ready-to-use code with C language support</p>
+                                    <p>Ready-to-use code for common tasks</p>
                                 </div>
                             </div>
                             
@@ -240,170 +243,106 @@
                         <!-- Skill Enhancement Tab -->
                         <div class="tab-pane" id="skills-tab">
                             <h3><i class="fas fa-graduation-cap"></i> AI Skill Enhancement</h3>
-                            <div class="skill-enhancement-intro">
-                                <p><i class="fas fa-info-circle"></i> Tell us what skills you want to enhance and we'll create a personalized learning plan!</p>
-                                <button class="btn" onclick="openSkillEnhancementPrompt()">
-                                    <i class="fas fa-magic"></i> Create Personalized Learning Plan
-                                </button>
-                            </div>
-                            
                             <div class="skill-exercises" id="skillExercises">
-                                <div class="default-exercises">
-                                    <h4><i class="fas fa-star"></i> Recommended Skill Exercises</h4>
-                                    <div class="recommended-grid">
-                                        <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('web development')">
-                                            <div class="recommended-icon">
-                                                <i class="fas fa-code"></i>
-                                            </div>
-                                            <h5>Web Development</h5>
-                                            <p>HTML, CSS, JavaScript, React</p>
-                                            <span class="difficulty easy">Beginner</span>
-                                        </div>
-                                        <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('python programming')">
-                                            <div class="recommended-icon">
-                                                <i class="fab fa-python"></i>
-                                            </div>
-                                            <h5>Python Programming</h5>
-                                            <p>Basics, Data Science, Web APIs</p>
-                                            <span class="difficulty medium">Intermediate</span>
-                                        </div>
-                                        <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('data structures')">
-                                            <div class="recommended-icon">
-                                                <i class="fas fa-sitemap"></i>
-                                            </div>
-                                            <h5>Data Structures</h5>
-                                            <p>Algorithms, Problem Solving</p>
-                                            <span class="difficulty hard">Advanced</span>
-                                        </div>
-                                        <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('database design')">
-                                            <div class="recommended-icon">
-                                                <i class="fas fa-database"></i>
-                                            </div>
-                                            <h5>Database Design</h5>
-                                            <p>SQL, NoSQL, Data Modeling</p>
-                                            <span class="difficulty medium">Intermediate</span>
-                                        </div>
+                                <p>Loading AI-generated exercises...</p>
+                            </div>
+                            <div class="skill-tutorials">
+                                <h4><i class="fas fa-video"></i> Recommended Tutorials</h4>
+                                <ul>
+                                    <li><a href="https://www.freecodecamp.org/" target="_blank">FreeCodeCamp</a> - Complete web development courses</li>
+                                    <li><a href="https://fastapi.tiangolo.com/tutorial/" target="_blank">FastAPI Tutorial</a> - Official documentation</li>
+                                    <li><a href="https://developer.mozilla.org/en-US/" target="_blank">MDN Web Docs</a> - JavaScript & Web APIs</li>
+                                    <li><a href="https://sqlite.org/lang.html" target="_blank">SQLite Documentation</a> - Database queries</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Version Control Tab -->
+                        <div class="tab-pane" id="version-control-tab">
+                            <h3><i class="fas fa-code-branch"></i> AI Version Control Assistant</h3>
+                            <div class="version-guide">
+                                <div class="form-group">
+                                    <label for="vcRequest"><i class="fas fa-question-circle"></i> What do you need help with?</label>
+                                    <textarea id="vcRequest" rows="3" placeholder="e.g., 'Give me git commands for branching', 'Docker commands for deployment', 'How to resolve merge conflicts'"></textarea>
+                                </div>
+                                <button class="btn" onclick="generateVersionControlHelp()">
+                                    <i class="fas fa-robot"></i> Get AI Assistance
+                                </button>
+                                
+                                <div id="vcResult" style="margin-top: 30px; display: none;">
+                                    <h4><i class="fas fa-terminal"></i> Generated Commands:</h4>
+                                    <div class="code-block" id="vcCommands"></div>
+                                    <button class="btn" onclick="copyVCCommands()" style="margin-top: 10px;">
+                                        <i class="fas fa-copy"></i> Copy to Clipboard
+                                    </button>
+                                </div>
+                                
+                                <div style="margin-top: 30px;">
+                                    <h4><i class="fas fa-lightbulb"></i> Quick Examples:</h4>
+                                    <div class="quick-examples">
+                                        <button class="btn-example" onclick="setVCExample('git init and basic commands')">Git Basics</button>
+                                        <button class="btn-example" onclick="setVCExample('docker run and build commands')">Docker</button>
+                                        <button class="btn-example" onclick="setVCExample('github pull request workflow')">GitHub</button>
+                                        <button class="btn-example" onclick="setVCExample('resolve merge conflicts')">Merge Conflicts</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Version Control Tab -->
-<div class="tab-pane" id="version-control-tab">
-    <h3><i class="fas fa-code-branch"></i> AI Version Control Assistant</h3>
-    <div class="version-guide">
-        <div class="form-group">
-            <label for="vcRequest"><i class="fas fa-question-circle"></i> What do you need help with?</label>
-            <textarea id="vcRequest" rows="3" placeholder="e.g., 'Give me git commands for branching', 'Docker commands for deployment', 'How to resolve merge conflicts', 'Windows CMD commands'"></textarea>
-        </div>
-        <button class="btn" onclick="generateVersionControlHelp()">
-            <i class="fas fa-robot"></i> Get AI Assistance
-        </button>
-        
-        <div id="vcResult" style="margin-top: 30px; display: none;">
-            <h4><i class="fas fa-terminal"></i> Generated Commands:</h4>
-            <div class="code-block" id="vcCommands"></div>
-            <button class="btn" onclick="copyVCCommands()" style="margin-top: 10px;">
-                <i class="fas fa-copy"></i> Copy to Clipboard
-            </button>
-        </div>
-        
-        <div style="margin-top: 30px;">
-            <h4><i class="fas fa-lightbulb"></i> Quick Examples:</h4>
-            <div class="quick-examples">
-                <button class="btn-example" onclick="setVCExample('git init and basic commands')">Git Basics</button>
-                <button class="btn-example" onclick="setVCExample('docker run and build commands')">Docker</button>
-                <button class="btn-example" onclick="setVCExample('github pull request workflow')">GitHub</button>
-                <button class="btn-example" onclick="setVCExample('resolve merge conflicts')">Merge Conflicts</button>
-                <button class="btn-example" onclick="setVCExample('cmd commands for windows')">CMD Commands</button>
-                <button class="btn-example" onclick="setVCExample('powershell vs cmd differences')">PowerShell</button>
-            </div>
-        </div>
-    </div>
-</div>
+                        <!-- Project Evaluation Tab -->
+                        <div class="tab-pane" id="evaluation-tab">
+                            <h3><i class="fas fa-clipboard-list"></i> AI Project Evaluation</h3>
+                            <div class="evaluation-form">
+                                <div class="form-group">
+                                    <label for="projectDescription">Describe your project for AI evaluation:</label>
+                                    <textarea id="projectDescription" rows="6" placeholder="Describe your project in detail... Include objectives, technologies, methodology, challenges, and expected outcomes."></textarea>
+                                </div>
+                                <button class="btn" onclick="evaluateProject()">
+                                    <i class="fas fa-search"></i> AI Evaluate Project
+                                </button>
+                                
+                                <div class="evaluation-result" id="evaluationResult" style="display: none;">
+                                    <h4>AI Evaluation Result:</h4>
+                                    <div class="score-display" id="scoreDisplay"></div>
+                                    <div class="recommendations" id="recommendations"></div>
+                                </div>
+                                
+                                <div class="checklist" id="projectChecklist">
+                                    <h4>Project Readiness Checklist</h4>
+                                    <div class="checklist-items"></div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Portfolio Tab -->
                         <div class="tab-pane" id="portfolio-tab">
                             <h3><i class="fas fa-briefcase"></i> AI Portfolio Builder</h3>
                             <div class="portfolio-guide">
-                                <div class="portfolio-form" id="portfolioForm">
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="portfolioName">Full Name</label>
-                                            <input type="text" id="portfolioName" placeholder="Your full name">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="portfolioEmail">Email</label>
-                                            <input type="email" id="portfolioEmail" placeholder="your.email@example.com">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="portfolioCollege">College/University</label>
-                                            <input type="text" id="portfolioCollege" placeholder="Your college name">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="portfolioBranch">Branch</label>
-                                            <input type="text" id="portfolioBranch" placeholder="Your branch/stream">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="portfolioSemester">Semester/Year</label>
-                                            <input type="text" id="portfolioSemester" placeholder="e.g., 5th Semester">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="portfolioPhone">Phone (optional)</label>
-                                            <input type="tel" id="portfolioPhone" placeholder="+91 XXXXXXXXXX">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="portfolioBio">Professional Bio</label>
-                                        <textarea id="portfolioBio" rows="3" placeholder="Write a brief professional bio about yourself..."></textarea>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Social Links</label>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <input type="url" id="portfolioGithub" placeholder="GitHub Profile URL">
-                                            </div>
-                                            <div class="form-group">
-                                                <input type="url" id="portfolioLinkedin" placeholder="LinkedIn Profile URL">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Skills</label>
-                                        <div class="skills-container" id="portfolioSkills"></div>
-                                        <div class="skill-input">
-                                            <input type="text" id="newSkill" placeholder="Add a skill">
-                                            <button type="button" class="btn-small" onclick="addSkill()">Add Skill</button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Select Projects to Include</label>
-                                        <div class="projects-selection" id="portfolioProjects">
-                                            <p>No projects in history yet. Add projects first.</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <button class="btn" onclick="generatePortfolio()">
-                                        <i class="fas fa-magic"></i> Generate AI Portfolio
+                                <h4><i class="fas fa-check-circle"></i> Portfolio Checklist</h4>
+                                <ul class="portfolio-checklist">
+                                    <li><input type="checkbox"> Project summary (2-3 paragraphs)</li>
+                                    <li><input type="checkbox"> Screenshots of your project</li>
+                                    <li><input type="checkbox"> Technologies used</li>
+                                    <li><input type="checkbox"> GitHub repository link</li>
+                                    <li><input type="checkbox"> Live demo link (if hosted)</li>
+                                    <li><input type="checkbox"> Challenges & solutions</li>
+                                    <li><input type="checkbox"> Future improvements</li>
+                                </ul>
+                                
+                                <h4><i class="fas fa-file-download"></i> Portfolio Builder</h4>
+                                <div class="export-options">
+                                    <button class="btn-export" onclick="openPortfolioBuilder()">
+                                        <i class="fas fa-wizard"></i> AI Portfolio Builder
+                                    </button>
+                                    <button class="btn-export" onclick="generateReadme()">
+                                        <i class="fab fa-readme"></i> Generate README.md
+                                    </button>
+                                    <button class="btn-export" onclick="generatePortfolioPage()">
+                                        <i class="fas fa-code"></i> Generate Portfolio Page
                                     </button>
                                 </div>
                                 
-                                <div class="portfolio-preview" id="portfolioPreview">
-                                    <p class="portfolio-instruction">
-                                        <i class="fas fa-info-circle"></i> Fill in your details above and click "Generate AI Portfolio" to create your portfolio.
-                                        Once generated, you can download the HTML file or copy the code.
-                                    </p>
-                                </div>
+                                <div class="portfolio-preview" id="portfolioPreview"></div>
                             </div>
                         </div>
                         
@@ -476,6 +415,28 @@
                 </div>
                 <button type="submit" class="btn">Add to History</button>
             </form>
+        </div>
+    </div>
+    
+    <!-- Version Control Helper Modal -->
+    <div class="modal" id="versionControlModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeVersionControlModal()">&times;</span>
+            <h3><i class="fas fa-terminal"></i> AI Version Control Helper</h3>
+            <div class="form-group">
+                <label for="vcRequest">What do you need help with?</label>
+                <textarea id="vcRequest" rows="3" placeholder="e.g., 'Give me git commands for branching', 'Docker commands for deployment', 'How to resolve merge conflicts'"></textarea>
+            </div>
+            <button class="btn" onclick="generateVersionControlHelp()">
+                <i class="fas fa-magic"></i> Generate AI Response
+            </button>
+            <div id="vcResult" class="code-result" style="margin-top: 20px; display: none;">
+                <h4>Generated Commands:</h4>
+                <pre><code id="vcCommands"></code></pre>
+                <button class="btn" onclick="copyVCCommands()">
+                    <i class="fas fa-copy"></i> Copy Commands
+                </button>
+            </div>
         </div>
     </div>
     

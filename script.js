@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = 'https://projectruntime.onrender.com';
+const API_BASE_URL = 'http://localhost:8000';
 const OPENROUTER_API_KEY = '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';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -86,13 +86,6 @@ function initializeEventListeners() {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
             switchTab(tabId);
-            
-            // Auto-load portfolio form when portfolio tab is selected
-            if (tabId === 'portfolio') {
-                setTimeout(() => {
-                    loadPortfolioForm();
-                }, 100);
-            }
         });
     });
     
@@ -127,8 +120,7 @@ function initializeEventListeners() {
     });
 }
 
-// Authentication Handlers (unchanged)
-// Authentication Handlers - FIXED
+// Authentication Handlers
 async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
@@ -137,10 +129,7 @@ async function handleLogin(e) {
     try {
         const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
         
@@ -170,10 +159,7 @@ async function handleRegister(e) {
     try {
         const response = await fetch(`${API_BASE_URL}/register`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password, email })
         });
         
@@ -205,10 +191,7 @@ async function handleStudentProfile(e) {
     try {
         const response = await fetch(`${API_BASE_URL}/save-profile`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(profileData)
         });
         
@@ -226,12 +209,10 @@ async function handleStudentProfile(e) {
     }
 }
 
-// Profile Management - FIXED
+// Profile Management
 async function fetchUserProfile() {
     try {
-        const response = await fetch(`${API_BASE_URL}/get-profile/${currentUser.id}`, {
-            headers: { 'Accept': 'application/json' }
-        });
+        const response = await fetch(`${API_BASE_URL}/get-profile/${currentUser.id}`);
         if (response.ok) {
             userProfile = await response.json();
             localStorage.setItem('userProfile', JSON.stringify(userProfile));
@@ -247,7 +228,8 @@ async function fetchUserProfile() {
         showForm('student');
     }
 }
-// UI Navigation (unchanged)
+
+// UI Navigation
 function showForm(formType) {
     // Hide all forms
     document.querySelectorAll('.form-container').forEach(el => {
@@ -338,9 +320,7 @@ function switchTab(tabId) {
     } else if (tabId === 'history') {
         loadProjectHistory();
     } else if (tabId === 'evaluation') {
-        // Removed: Project evaluation feature
-    } else if (tabId === 'portfolio') {
-        loadPortfolioForm();
+        loadProjectChecklist();
     }
 }
 
@@ -385,38 +365,21 @@ function generateFeatureContent(featureType) {
             <div id="ideasResult" class="ideas-result" style="margin-top: 20px;"></div>
         `,
         'planning': `
-            <h3><i class="fas fa-project-diagram"></i> AI Project Planning Assistant</h3>
+            <h3><i class="fas fa-project-diagram"></i> Project Planning</h3>
             <div class="form-group">
-                <label>Project Title</label>
-                <input type="text" id="projectTitle" placeholder="e.g., E-commerce Website, Task Manager App" required>
+                <label>Project Name</label>
+                <input type="text" id="projectNameInput" placeholder="Enter project name">
             </div>
             <div class="form-group">
-                <label>Project Description</label>
-                <textarea id="projectDesc" rows="4" placeholder="Describe your project in detail..."></textarea>
-            </div>
-            <div class="form-group">
-                <label>Time Limit (weeks)</label>
-                <input type="number" id="projectWeeks" min="1" max="52" value="4" required>
-                <small>Total weeks available to complete the project</small>
+                <label>Estimated Duration (weeks)</label>
+                <input type="number" id="projectDuration" min="1" max="52" value="4">
             </div>
             <div class="form-group">
                 <label>Team Size</label>
                 <input type="number" id="teamSize" min="1" max="10" value="1">
             </div>
-            <div class="form-group">
-                <label>Skill Level</label>
-                <select id="planningSkillLevel">
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Hours per week (per team member)</label>
-                <input type="number" id="hoursPerWeek" min="5" max="40" value="10">
-            </div>
-            <button class="btn" onclick="generateEnhancedProjectPlan()">
-                <i class="fas fa-calendar-alt"></i> Generate Detailed Plan
+            <button class="btn" onclick="generateProjectPlan()">
+                <i class="fas fa-calendar-alt"></i> Generate Plan
             </button>
             <div id="planResult" class="plan-result" style="margin-top: 20px;"></div>
         `,
@@ -440,7 +403,6 @@ function generateFeatureContent(featureType) {
                     <option value="python">Python</option>
                     <option value="java">Java</option>
                     <option value="cpp">C++</option>
-                    <option value="c">C</option>
                     <option value="html">HTML/CSS</option>
                     <option value="sql">SQL</option>
                     <option value="php">PHP</option>
@@ -477,7 +439,7 @@ async function generateProjectIdeas() {
     showLoading('ideasResult', 'Generating AI project ideas...');
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/get-project-ideas`, {
+        const response = await fetch(`${API_BASE_URL}/get-project-ideas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domain, skill_level: skillLevel, count })
@@ -605,380 +567,42 @@ function getFallbackIdeas(domain, skillLevel) {
     }];
 }
 
-// ENHANCED Project Planning Function
-async function generateEnhancedProjectPlan() {
-    const projectTitle = document.getElementById('projectTitle').value;
-    const projectDesc = document.getElementById('projectDesc').value;
-    const weeks = parseInt(document.getElementById('projectWeeks').value) || 4;
+function generateProjectPlan() {
+    const projectName = document.getElementById('projectNameInput').value || 'My Project';
+    const duration = parseInt(document.getElementById('projectDuration').value) || 4;
     const teamSize = parseInt(document.getElementById('teamSize').value) || 1;
-    const skillLevel = document.getElementById('planningSkillLevel').value;
-    const hoursPerWeek = parseInt(document.getElementById('hoursPerWeek').value) || 10;
     
-    if (!projectTitle.trim()) {
-        showError('Please enter a project title');
-        return;
-    }
-    
-    showLoading('planResult', 'Generating AI-powered project plan...');
-    
-    try {
-        // Use AI to generate detailed plan
-        const totalHours = weeks * teamSize * hoursPerWeek;
-        const projectContext = {
-            title: projectTitle,
-            description: projectDesc || 'No detailed description provided',
-            weeks: weeks,
-            team_size: teamSize,
-            skill_level: skillLevel,
-            total_hours: totalHours,
-            hours_per_week_per_person: hoursPerWeek
-        };
-        
-        const prompt = `Create a detailed project plan for: "${projectTitle}"
-        
-        Project Context:
-        - Duration: ${weeks} weeks
-        - Team Size: ${teamSize} person(s)
-        - Skill Level: ${skillLevel}
-        - Total available hours: ${totalHours} hours
-        - Hours per week per person: ${hoursPerWeek}
-        
-        Description: ${projectDesc}
-        
-        Generate a week-by-week breakdown with:
-        1. Week number and focus area
-        2. Key tasks and milestones
-        3. Hours allocation per task
-        4. Deliverables for each week
-        5. Success criteria
-        6. Risk mitigation strategies
-        7. Recommended technologies (if not specified)
-        8. Learning resources for each phase
-        
-        Return as JSON with: weekly_plan (array of week objects), summary, total_hours, critical_path, risks, success_metrics`;
-        
-        const aiPlan = await fetchOpenRouterResponse(prompt, true);
-        
-        if (aiPlan && !aiPlan.error) {
-            displayEnhancedPlan(aiPlan, projectContext);
-        } else {
-            // Fallback to algorithmic planning
-            displayEnhancedPlan(generateAlgorithmicPlan(projectContext), projectContext);
-        }
-        
-    } catch (error) {
-        console.error('Error generating plan:', error);
-        displayEnhancedPlan(generateAlgorithmicPlan({
-            title: projectTitle,
-            weeks: weeks,
-            teamSize: teamSize,
-            skillLevel: skillLevel,
-            totalHours: weeks * teamSize * hoursPerWeek
-        }));
-    }
-}
-
-function generateAlgorithmicPlan(context) {
-    const weeks = context.weeks;
-    const totalHours = context.totalHours;
-    const skillLevel = context.skillLevel;
-    
-    // Define phases based on weeks
-    const phases = [
-        { name: 'Planning & Research', percent: 15 },
-        { name: 'Design & Prototyping', percent: 20 },
-        { name: 'Development', percent: 40 },
-        { name: 'Testing & Debugging', percent: 15 },
-        { name: 'Deployment & Documentation', percent: 10 }
+    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8'];
+    const tasks = [
+        'Project Planning & Requirements',
+        'UI/UX Design & Prototyping',
+        'Backend Development',
+        'Frontend Development',
+        'Database Setup',
+        'API Integration',
+        'Testing & Debugging',
+        'Deployment & Documentation'
     ];
     
-    // Adjust based on skill level
-    if (skillLevel === 'beginner') {
-        phases[0].percent += 5;  // More planning time
-        phases[2].percent -= 5;  // Less development time
-    } else if (skillLevel === 'advanced') {
-        phases[0].percent -= 5;  // Less planning time
-        phases[2].percent += 5;  // More development time
-    }
+    let html = `<h4>Project Plan for "${projectName}"</h4>`;
+    html += `<p><strong>Duration:</strong> ${duration} weeks | <strong>Team Size:</strong> ${teamSize} member(s)</p>`;
+    html += '<div class="gantt-chart">';
     
-    const weeklyPlan = [];
-    let weekHours = Math.ceil(totalHours / weeks);
-    
-    // Generate week-by-week plan
-    let phaseIndex = 0;
-    let remainingPhasePercent = phases[0].percent;
-    
-    for (let week = 1; week <= weeks; week++) {
-        const phaseHours = Math.round(totalHours * (phases[phaseIndex].percent / 100));
-        const weeklyHours = Math.min(weekHours, phaseHours);
-        
-        weeklyPlan.push({
-            week: week,
-            focus: phases[phaseIndex].name,
-            hours: weeklyHours,
-            tasks: getWeekTasks(week, phases[phaseIndex].name, skillLevel),
-            deliverables: getWeekDeliverables(week, phases[phaseIndex].name),
-            milestones: getWeekMilestones(week, weeks)
-        });
-        
-        // Move to next phase if needed
-        remainingPhasePercent -= (weeklyHours / totalHours) * 100;
-        if (remainingPhasePercent <= 0 && phaseIndex < phases.length - 1) {
-            phaseIndex++;
-            remainingPhasePercent = phases[phaseIndex].percent;
-        }
-    }
-    
-    return {
-        weekly_plan: weeklyPlan,
-        summary: {
-            total_weeks: weeks,
-            total_hours: totalHours,
-            weekly_hours_per_person: Math.ceil(totalHours / weeks / context.teamSize),
-            skill_level_recommendations: getSkillLevelRecommendations(skillLevel)
-        },
-        critical_path: getCriticalPath(weeks),
-        risks: getProjectRisks(skillLevel),
-        success_metrics: ['Project completed on time', 'All features implemented', 'Code quality standards met', 'Documentation complete']
-    };
-}
-
-function getWeekTasks(week, phase, skillLevel) {
-    const tasks = {
-        'Planning & Research': [
-            'Define project requirements and scope',
-            'Research similar projects and technologies',
-            'Create user stories and use cases',
-            'Set up project management tools'
-        ],
-        'Design & Prototyping': [
-            'Create wireframes and mockups',
-            'Design database schema',
-            'Plan API endpoints (if applicable)',
-            'Create UI/UX design'
-        ],
-        'Development': [
-            'Set up development environment',
-            'Implement core features',
-            'Write unit tests',
-            'Code review and refactoring'
-        ],
-        'Testing & Debugging': [
-            'Integration testing',
-            'User acceptance testing',
-            'Bug fixing and optimization',
-            'Performance testing'
-        ],
-        'Deployment & Documentation': [
-            'Prepare deployment pipeline',
-            'Write technical documentation',
-            'Create user manual',
-            'Final testing on production'
-        ]
-    };
-    
-    const phaseTasks = tasks[phase] || ['Phase tasks to be determined'];
-    
-    // Add skill-level specific tasks
-    if (skillLevel === 'beginner' && phase === 'Development') {
-        phaseTasks.push('Follow tutorial for complex parts', 'Seek code reviews frequently');
-    } else if (skillLevel === 'advanced' && phase === 'Development') {
-        phaseTasks.push('Implement advanced features', 'Optimize performance', 'Add monitoring');
-    }
-    
-    return phaseTasks.slice(0, Math.min(week, phaseTasks.length));
-}
-
-function getWeekDeliverables(week, phase) {
-    const deliverables = {
-        'Planning & Research': ['Requirements document', 'Project timeline', 'Technology stack decision'],
-        'Design & Prototyping': ['Wireframes', 'Database design', 'API specification'],
-        'Development': ['Working prototype', 'Core features', 'Test suite'],
-        'Testing & Debugging': ['Test reports', 'Bug fixes', 'Performance metrics'],
-        'Deployment & Documentation': ['Deployed application', 'Documentation', 'User guide']
-    };
-    
-    const phaseDeliverables = deliverables[phase] || ['Deliverable'];
-    return [phaseDeliverables[Math.min(week - 1, phaseDeliverables.length - 1)]];
-}
-
-function getWeekMilestones(week, totalWeeks) {
-    const milestones = {
-        1: 'Project kickoff and planning complete',
-        2: 'Design phase complete, development starts',
-        [Math.floor(totalWeeks/2)]: 'Core features implemented',
-        [totalWeeks - 2]: 'Testing phase begins',
-        [totalWeeks]: 'Project completion and delivery'
-    };
-    
-    return milestones[week] ? [milestones[week]] : [];
-}
-
-function getSkillLevelRecommendations(skillLevel) {
-    const recommendations = {
-        'beginner': [
-            'Use simpler technologies (HTML, CSS, basic JavaScript)',
-            'Follow step-by-step tutorials',
-            'Focus on core functionality first',
-            'Get frequent feedback'
-        ],
-        'intermediate': [
-            'Use frameworks (React, Vue, Express)',
-            'Implement authentication and database',
-            'Follow best practices',
-            'Write tests'
-        ],
-        'advanced': [
-            'Use advanced features (WebSockets, real-time)',
-            'Implement complex algorithms',
-            'Focus on scalability',
-            'Add monitoring and analytics'
-        ]
-    };
-    
-    return recommendations[skillLevel] || recommendations['intermediate'];
-}
-
-function getCriticalPath(totalWeeks) {
-    return [
-        `Week 1-2: Planning and design must be completed on time`,
-        `Week ${Math.floor(totalWeeks/2)}: Core features must be working`,
-        `Week ${totalWeeks - 1}: Testing must be completed`,
-        `Week ${totalWeeks}: Final deployment and documentation`
-    ];
-}
-
-function getProjectRisks(skillLevel) {
-    const baseRisks = [
-        'Scope creep - features being added without adjusting timeline',
-        'Technical challenges with new technologies',
-        'Team availability and time management',
-        'Integration issues with external services'
-    ];
-    
-    if (skillLevel === 'beginner') {
-        baseRisks.push('Learning curve for new technologies', 'Underestimating time requirements');
-    } else if (skillLevel === 'advanced') {
-        baseRisks.push('Over-engineering solutions', 'Complexity management');
-    }
-    
-    return baseRisks.map(risk => ({ risk: risk, mitigation: getRiskMitigation(risk) }));
-}
-
-function getRiskMitigation(risk) {
-    const mitigations = {
-        'Scope creep': 'Use MoSCoW prioritization, have clear requirements',
-        'Technical challenges': 'Research early, have fallback solutions',
-        'Team availability': 'Regular check-ins, flexible scheduling',
-        'Learning curve': 'Allocate extra time, find tutorials and mentors',
-        'Underestimating time': 'Add 20% buffer to estimates'
-    };
-    
-    for (const [key, value] of Object.entries(mitigations)) {
-        if (risk.includes(key)) return value;
-    }
-    return 'Regular progress reviews and adjustments';
-}
-
-function displayEnhancedPlan(plan, context) {
-    const resultDiv = document.getElementById('planResult');
-    
-    if (!plan) {
-        resultDiv.innerHTML = '<div class="error-message">Failed to generate plan. Please try again.</div>';
-        return;
-    }
-    
-    let html = `<h4>📋 Project Plan: "${context.title}"</h4>`;
-    html += `<div class="plan-summary">
-                <p><strong>Duration:</strong> ${context.weeks} weeks | <strong>Team:</strong> ${context.teamSize} person(s)</p>
-                <p><strong>Total Hours:</strong> ${context.totalHours} hours | <strong>Hours/Week/Person:</strong> ${context.hoursPerWeek}</p>
-                <p><strong>Skill Level:</strong> ${context.skillLevel.charAt(0).toUpperCase() + context.skillLevel.slice(1)}</p>
-            </div>`;
-    
-    // Weekly breakdown
-    html += '<h5>📅 Week-by-Week Breakdown:</h5>';
-    html += '<div class="weekly-plan">';
-    
-    const weeklyPlan = plan.weekly_plan || generateAlgorithmicPlan(context).weekly_plan;
-    
-    weeklyPlan.forEach(weekPlan => {
+    for (let i = 0; i < Math.min(duration, 8); i++) {
+        const width = (100 / duration) * 100;
         html += `
-            <div class="week-card">
-                <div class="week-header">
-                    <h6>Week ${weekPlan.week}: ${weekPlan.focus}</h6>
-                    <span class="hours-badge">${weekPlan.hours || '8'} hours</span>
-                </div>
-                <div class="week-content">
-                    <p><strong>Tasks:</strong></p>
-                    <ul>${(weekPlan.tasks || []).map(task => `<li>${task}</li>`).join('')}</ul>
-                    <p><strong>Deliverables:</strong> ${(weekPlan.deliverables || []).join(', ')}</p>
-                    ${weekPlan.milestones && weekPlan.milestones.length > 0 ? 
-                      `<p><strong>Milestones:</strong> ${weekPlan.milestones.join(', ')}</p>` : ''}
+            <div class="gantt-row">
+                <div class="gantt-task">${tasks[i] || `Task ${i + 1}`}</div>
+                <div class="gantt-bar-container">
+                    <div class="gantt-bar" style="width: ${width}%"></div>
+                    <span class="gantt-week">${weeks[i] || `Week ${i + 1}`}</span>
                 </div>
             </div>
         `;
-    });
-    
-    html += '</div>';
-    
-    // Summary and recommendations
-    html += '<div class="plan-details">';
-    
-    if (plan.summary) {
-        html += `<div class="detail-section">
-                    <h5>📊 Project Summary</h5>
-                    <ul>
-                        <li>Total weeks: ${plan.summary.total_weeks || context.weeks}</li>
-                        <li>Total hours: ${plan.summary.total_hours || context.totalHours}</li>
-                        <li>Weekly hours per person: ${plan.summary.weekly_hours_per_person || Math.ceil(context.totalHours / context.weeks / context.teamSize)}</li>
-                    </ul>
-                </div>`;
-    }
-    
-    if (plan.critical_path) {
-        html += `<div class="detail-section">
-                    <h5>⚡ Critical Path</h5>
-                    <ul>${plan.critical_path.map(item => `<li>${item}</li>`).join('')}</ul>
-                </div>`;
-    }
-    
-    if (plan.risks) {
-        html += `<div class="detail-section">
-                    <h5>⚠️ Risks & Mitigations</h5>
-                    <div class="risks-grid">`;
-        
-        plan.risks.forEach(riskItem => {
-            const risk = typeof riskItem === 'object' ? riskItem.risk : riskItem;
-            const mitigation = typeof riskItem === 'object' ? riskItem.mitigation : getRiskMitigation(risk);
-            html += `<div class="risk-item">
-                        <div class="risk"><strong>Risk:</strong> ${risk}</div>
-                        <div class="mitigation"><strong>Mitigation:</strong> ${mitigation}</div>
-                    </div>`;
-        });
-        
-        html += '</div></div>';
-    }
-    
-    if (plan.success_metrics) {
-        html += `<div class="detail-section">
-                    <h5>✅ Success Metrics</h5>
-                    <ul>${plan.success_metrics.map(metric => `<li>${metric}</li>`).join('')}</ul>
-                </div>`;
     }
     
     html += '</div>';
-    
-    // Add export button
-    html += `<div class="plan-actions">
-                <button class="btn" onclick="downloadPlanAsPDF('${context.title}', this)">
-                    <i class="fas fa-download"></i> Download Plan as PDF
-                </button>
-                <button class="btn" onclick="copyPlanToClipboard(this)">
-                    <i class="fas fa-copy"></i> Copy Plan
-                </button>
-            </div>`;
-    
-    resultDiv.innerHTML = html;
+    document.getElementById('planResult').innerHTML = html;
 }
 
 async function generateDocumentation() {
@@ -992,7 +616,7 @@ async function generateDocumentation() {
     showLoading('docsResult', 'Generating AI documentation...');
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/generate-documentation`, {
+        const response = await fetch(`${API_BASE_URL}/generate-documentation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_details: projectDetails })
@@ -1125,7 +749,7 @@ Project successfully completed with all objectives met. The application is funct
 `;
 }
 
-// New Code Snippet Generator with C language support
+// New Code Snippet Generator
 async function generateCodeSnippet() {
     const language = document.getElementById('codeLanguage').value;
     const prompt = document.getElementById('codePrompt').value.trim();
@@ -1140,7 +764,7 @@ async function generateCodeSnippet() {
     
     try {
         // First try backend API
-        const response = await fetch(`https://projectruntime.onrender.com/generate-code-snippet`, {
+        const response = await fetch(`${API_BASE_URL}/generate-code-snippet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1154,7 +778,7 @@ async function generateCodeSnippet() {
             const data = await response.json();
             displayCodeSnippet(data.snippet, language);
         } else {
-            // Fallback to direct AI call
+            // Fallback to direct OpenRouter API
             const aiResponse = await generateCodeWithAI(language, prompt, complexity);
             displayCodeSnippet(aiResponse, language);
         }
@@ -1232,7 +856,6 @@ function displayCodeSnippet(snippet, language) {
 }
 
 function getFallbackSnippet(prompt, language, complexity) {
-    // Add C language to fallback snippets
     const fallbackSnippets = {
         'javascript': {
             title: 'JavaScript Login System',
@@ -1325,95 +948,6 @@ processed_df, statistics = process_user_data(users)
 print(f"Processed {statistics['total_users']} users")`,
             explanation: 'Python function for processing user data with pandas, including data cleaning and statistical analysis.',
             usage_example: 'process_user_data([{"name": "John", "age": 30}])'
-        },
-        'c': {
-            title: 'C Programming Example',
-            code: `/* ${prompt} - C Language Implementation */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-// Structure for student record
-typedef struct {
-    char name[50];
-    int age;
-    float gpa;
-} Student;
-
-// Function to validate student data
-int validateStudent(Student s) {
-    // Validate name
-    if (strlen(s.name) == 0 || strlen(s.name) > 49) {
-        printf("Error: Invalid name length\\n");
-        return 0;
-    }
-    
-    // Validate age
-    if (s.age < 0 || s.age > 100) {
-        printf("Error: Invalid age\\n");
-        return 0;
-    }
-    
-    // Validate GPA
-    if (s.gpa < 0.0 || s.gpa > 4.0) {
-        printf("Error: Invalid GPA\\n");
-        return 0;
-    }
-    
-    return 1; // Valid
-}
-
-// Function to print student information
-void printStudent(Student s) {
-    printf("Student Information:\\n");
-    printf("  Name: %s\\n", s.name);
-    printf("  Age: %d\\n", s.age);
-    printf("  GPA: %.2f\\n", s.gpa);
-    printf("\\n");
-}
-
-// Function to calculate average GPA
-float calculateAverageGPA(Student students[], int count) {
-    if (count <= 0) return 0.0;
-    
-    float total = 0.0;
-    for (int i = 0; i < count; i++) {
-        total += students[i].gpa;
-    }
-    return total / count;
-}
-
-int main() {
-    // Create student records
-    Student students[3] = {
-        {"John Doe", 20, 3.5},
-        {"Jane Smith", 21, 3.8},
-        {"Bob Johnson", 19, 3.2}
-    };
-    
-    int studentCount = 3;
-    
-    // Validate and print students
-    printf("Validating and printing student records:\\n\\n");
-    for (int i = 0; i < studentCount; i++) {
-        if (validateStudent(students[i])) {
-            printStudent(students[i]);
-        } else {
-            printf("Student %d has invalid data\\n", i + 1);
-        }
-    }
-    
-    // Calculate and print average GPA
-    float avgGPA = calculateAverageGPA(students, studentCount);
-    printf("Average GPA: %.2f\\n", avgGPA);
-    
-    return 0;
-}`,
-            explanation: 'C program demonstrating student record management with validation, structures, and array processing.',
-            usage_example: `// Compile and run:
-// gcc student.c -o student
-// ./student`
         }
     };
     
@@ -1429,7 +963,7 @@ function copyGeneratedSnippet() {
     }
 }
 
-// OpenRouter API Helper (IMPROVED for speed)
+// OpenRouter API Helper
 async function fetchOpenRouterResponse(prompt, jsonResponse = false) {
     if (!OPENROUTER_API_KEY) {
         console.warn('OpenRouter API key not configured');
@@ -1437,10 +971,6 @@ async function fetchOpenRouterResponse(prompt, jsonResponse = false) {
     }
     
     try {
-        // Use AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-        
         const response = await fetch(OPENROUTER_API_URL, {
             method: 'POST',
             headers: {
@@ -1456,14 +986,10 @@ async function fetchOpenRouterResponse(prompt, jsonResponse = false) {
                         content: prompt
                     }
                 ],
-                max_tokens: 1000, // Reduced for faster response
-                temperature: 0.7,
+                max_tokens: 1500,
                 ...(jsonResponse && { response_format: { type: "json_object" } })
-            }),
-            signal: controller.signal
+            })
         });
-        
-        clearTimeout(timeoutId);
         
         if (response.ok) {
             const data = await response.json();
@@ -1481,32 +1007,24 @@ async function fetchOpenRouterResponse(prompt, jsonResponse = false) {
         }
         return null;
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.warn('OpenRouter API request timed out');
-            return { error: 'Request timeout. Please try again.' };
-        }
         console.error('OpenRouter API error:', error);
         return null;
     }
 }
 
-// ENHANCED Skill Enhancement Functions
+// Skill Enhancement Functions
 async function loadSkillExercises() {
     if (!currentUser || !elements.skillExercises) return;
     
     showLoading('skillExercises', 'Loading AI-generated exercises...');
     
     try {
-        // Get user's preferred skills/interests
-        const skillPreferences = localStorage.getItem('skillPreferences') || 'coding';
-        
-        const response = await fetch(`https://projectruntime.onrender.com/get-skill-exercises`, {
+        const response = await fetch(`${API_BASE_URL}/get-skill-exercises`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 user_id: currentUser.id,
-                skill_level: userProfile?.skill_level,
-                interests: skillPreferences
+                skill_level: userProfile?.skill_level 
             })
         });
         
@@ -1522,395 +1040,15 @@ async function loadSkillExercises() {
     }
 }
 
-function openSkillEnhancementPrompt() {
-    const promptHtml = `
-        <h3><i class="fas fa-brain"></i> AI Skill Enhancement</h3>
-        <div class="form-group">
-            <label><i class="fas fa-graduation-cap"></i> What skills do you want to enhance?</label>
-            <textarea id="skillPrompt" rows="4" placeholder="e.g., 'I want to learn web development', 'Improve my data structures knowledge', 'Learn Python for AI', 'Build mobile apps'"></textarea>
-        </div>
-        <div class="skill-categories">
-            <h5><i class="fas fa-star"></i> Recommended Categories:</h5>
-            <div class="category-buttons">
-                <button class="btn-category" onclick="setSkillCategory('web development')">
-                    <i class="fas fa-code"></i> Web Development
-                </button>
-                <button class="btn-category" onclick="setSkillCategory('data structures')">
-                    <i class="fas fa-sitemap"></i> Data Structures
-                </button>
-                <button class="btn-category" onclick="setSkillCategory('python programming')">
-                    <i class="fab fa-python"></i> Python
-                </button>
-                <button class="btn-category" onclick="setSkillCategory('mobile development')">
-                    <i class="fas fa-mobile-alt"></i> Mobile Apps
-                </button>
-                <button class="btn-category" onclick="setSkillCategory('database design')">
-                    <i class="fas fa-database"></i> Databases
-                </button>
-                <button class="btn-category" onclick="setSkillCategory('ai machine learning')">
-                    <i class="fas fa-robot"></i> AI/ML
-                </button>
-            </div>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-chart-line"></i> Current Skill Level</label>
-            <select id="enhancementLevel">
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-clock"></i> Time Available (hours per week)</label>
-            <input type="number" id="hoursAvailable" min="1" max="40" value="5">
-        </div>
-        <button class="btn" onclick="generateSkillEnhancementPlan()">
-            <i class="fas fa-magic"></i> Generate Personalized Learning Plan
-        </button>
-        <div id="enhancementResult" style="margin-top: 20px;"></div>
-    `;
-    
-    elements.modalContent.innerHTML = promptHtml;
-    elements.featureModal.classList.add('active');
-}
-
-function setSkillCategory(category) {
-    document.getElementById('skillPrompt').value = `I want to learn ${category} and improve my skills in this area.`;
-}
-
-async function generateSkillEnhancementPlan() {
-    const skillPrompt = document.getElementById('skillPrompt').value.trim();
-    const level = document.getElementById('enhancementLevel').value;
-    const hours = parseInt(document.getElementById('hoursAvailable').value) || 5;
-    
-    if (!skillPrompt) {
-        showError('Please describe what skills you want to enhance');
-        return;
-    }
-    
-    showLoading('enhancementResult', 'Creating personalized learning plan...');
-    
-    try {
-        // Save preferences
-        localStorage.setItem('skillPreferences', skillPrompt.toLowerCase());
-        
-        // Generate AI-powered learning plan
-        const aiPrompt = `Create a personalized skill enhancement plan for a ${level} level student who wants to: "${skillPrompt}"
-        
-        Available time: ${hours} hours per week
-        
-        Provide a comprehensive learning plan with:
-        1. Weekly breakdown for 4 weeks
-        2. Specific learning objectives for each week
-        3. Hands-on exercises and projects
-        4. Video tutorial links (real YouTube URLs)
-        5. Reading materials and documentation
-        6. Practice problems
-        7. Success metrics
-        8. Common pitfalls to avoid
-        
-        Return as JSON with: weekly_plan, resources, success_criteria, estimated_timeline`;
-        
-        const aiResponse = await fetchOpenRouterResponse(aiPrompt, true);
-        
-        if (aiResponse && !aiResponse.error) {
-            displaySkillEnhancementPlan(aiResponse, skillPrompt, level, hours);
-        } else {
-            displaySkillEnhancementPlan(generateDefaultSkillPlan(skillPrompt, level, hours), skillPrompt, level, hours);
-        }
-        
-    } catch (error) {
-        console.error('Error generating skill plan:', error);
-        displaySkillEnhancementPlan(generateDefaultSkillPlan(skillPrompt, level, hours), skillPrompt, level, hours);
-    }
-}
-
-function generateDefaultSkillPlan(skillPrompt, level, hours) {
-    const weeks = 4;
-    const weeklyHours = hours;
-    
-    const weeklyPlan = [];
-    for (let week = 1; week <= weeks; week++) {
-        weeklyPlan.push({
-            week: week,
-            focus: getWeekFocus(week, skillPrompt),
-            hours: weeklyHours,
-            objectives: getWeekObjectives(week, level),
-            exercises: getWeekExercises(week, skillPrompt),
-            projects: getWeekProjects(week, skillPrompt, level)
-        });
-    }
-    
-    return {
-        weekly_plan: weeklyPlan,
-        resources: {
-            video_tutorials: [
-                "https://www.youtube.com/c/Freecodecamp",
-                "https://www.youtube.com/c/TraversyMedia",
-                "https://www.youtube.com/c/TheNetNinja"
-            ],
-            documentation: [
-                "https://developer.mozilla.org",
-                "https://www.w3schools.com",
-                "https://docs.python.org" + (skillPrompt.toLowerCase().includes('python') ? '/3/' : '')
-            ],
-            practice_platforms: [
-                "https://leetcode.com",
-                "https://www.hackerrank.com",
-                "https://www.codewars.com"
-            ]
-        },
-        success_criteria: [
-            "Complete all weekly exercises",
-            "Build at least 2 small projects",
-            "Understand core concepts",
-            "Apply knowledge to solve problems"
-        ],
-        estimated_timeline: `${weeks} weeks (${hours} hours/week)`
-    };
-}
-
-function getWeekFocus(week, skillPrompt) {
-    const focuses = [
-        "Fundamentals & Basics",
-        "Core Concepts & Practice",
-        "Advanced Topics & Projects",
-        "Implementation & Portfolio"
-    ];
-    return focuses[week - 1] || `Week ${week} Learning`;
-}
-
-function getWeekObjectives(week, level) {
-    const objectives = {
-        'beginner': [
-            "Understand basic syntax and concepts",
-            "Write simple programs",
-            "Learn debugging techniques",
-            "Build a small project"
-        ],
-        'intermediate': [
-            "Master core concepts",
-            "Work with frameworks/libraries",
-            "Implement design patterns",
-            "Build complex projects"
-        ],
-        'advanced': [
-            "Optimize performance",
-            "Implement advanced algorithms",
-            "Work with databases/APIs",
-            "Build portfolio-ready projects"
-        ]
-    };
-    
-    const levelObjectives = objectives[level] || objectives['beginner'];
-    return [levelObjectives[week - 1] || levelObjectives[0]];
-}
-
-function getWeekExercises(week, skillPrompt) {
-    const skill = skillPrompt.toLowerCase();
-    let exercises = [];
-    
-    if (skill.includes('web') || skill.includes('frontend')) {
-        exercises = [
-            "Create a responsive HTML/CSS layout",
-            "Build a JavaScript calculator",
-            "Implement form validation",
-            "Create a single-page application"
-        ];
-    } else if (skill.includes('python')) {
-        exercises = [
-            "Write Python scripts for file handling",
-            "Create a data processing script",
-            "Build a web scraper",
-            "Implement a simple API"
-        ];
-    } else if (skill.includes('data') || skill.includes('structure')) {
-        exercises = [
-            "Implement linked list operations",
-            "Create sorting algorithms",
-            "Solve algorithm problems",
-            "Optimize code for efficiency"
-        ];
-    } else {
-        exercises = [
-            "Practice core concepts",
-            "Solve coding challenges",
-            "Build small projects",
-            "Optimize and refactor code"
-        ];
-    }
-    
-    return [exercises[week - 1] || exercises[0]];
-}
-
-function getWeekProjects(week, skillPrompt, level) {
-    const skill = skillPrompt.toLowerCase();
-    let projects = [];
-    
-    if (skill.includes('web')) {
-        projects = [
-            "Personal portfolio website",
-            "Todo list application",
-            "Weather app with API",
-            "E-commerce product page"
-        ];
-    } else if (skill.includes('python')) {
-        projects = [
-            "Number guessing game",
-            "Password generator",
-            "File organizer script",
-            "Web API with FastAPI"
-        ];
-    } else {
-        projects = [
-            "Practice project 1",
-            "Practice project 2",
-            "Portfolio project",
-            "Final showcase project"
-        ];
-    }
-    
-    return [projects[week - 1] || projects[0]];
-}
-
-function displaySkillEnhancementPlan(plan, skillPrompt, level, hours) {
-    const resultDiv = document.getElementById('enhancementResult');
-    
-    let html = `<h4>🎯 Personalized Skill Enhancement Plan</h4>`;
-    html += `<div class="plan-header">
-                <p><strong>Skill Goal:</strong> ${skillPrompt}</p>
-                <p><strong>Level:</strong> ${level.charAt(0).toUpperCase() + level.slice(1)} | <strong>Time:</strong> ${hours} hours/week</p>
-            </div>`;
-    
-    // Weekly breakdown
-    html += '<h5>📚 Weekly Learning Plan:</h5>';
-    html += '<div class="weekly-learning">';
-    
-    const weeklyPlan = plan.weekly_plan || generateDefaultSkillPlan(skillPrompt, level, hours).weekly_plan;
-    
-    weeklyPlan.forEach(weekPlan => {
-        html += `
-            <div class="learning-week">
-                <div class="week-header">
-                    <h6>Week ${weekPlan.week}: ${weekPlan.focus}</h6>
-                    <span class="hours-badge">${weekPlan.hours || hours} hours</span>
-                </div>
-                <div class="week-content">
-                    <p><strong>Objectives:</strong> ${(weekPlan.objectives || []).join(', ')}</p>
-                    <p><strong>Exercises:</strong> ${(weekPlan.exercises || []).join(', ')}</p>
-                    <p><strong>Projects:</strong> ${(weekPlan.projects || []).join(', ')}</p>
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    
-    // Resources
-    if (plan.resources) {
-        html += `<div class="resources-section">
-                    <h5>📖 Learning Resources:</h5>
-                    <div class="resource-category">
-                        <h6><i class="fab fa-youtube"></i> Video Tutorials:</h6>
-                        <ul>${(plan.resources.video_tutorials || []).map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>
-                    </div>
-                    <div class="resource-category">
-                        <h6><i class="fas fa-book"></i> Documentation:</h6>
-                        <ul>${(plan.resources.documentation || []).map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>
-                    </div>
-                    <div class="resource-category">
-                        <h6><i class="fas fa-code"></i> Practice Platforms:</h6>
-                        <ul>${(plan.resources.practice_platforms || []).map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>
-                    </div>
-                </div>`;
-    }
-    
-    // Success criteria
-    if (plan.success_criteria) {
-        html += `<div class="success-section">
-                    <h5>✅ Success Criteria:</h5>
-                    <ul>${plan.success_criteria.map(criteria => `<li>${criteria}</li>`).join('')}</ul>
-                </div>`;
-    }
-    
-    // Timeline
-    if (plan.estimated_timeline) {
-        html += `<div class="timeline-section">
-                    <h5>⏰ Estimated Timeline:</h5>
-                    <p>${plan.estimated_timeline}</p>
-                </div>`;
-    }
-    
-    // Action buttons
-    html += `<div class="plan-actions">
-                <button class="btn" onclick="downloadSkillPlan('${skillPrompt}', this)">
-                    <i class="fas fa-download"></i> Download Plan
-                </button>
-                <button class="btn" onclick="startLearningPlan()">
-                    <i class="fas fa-play"></i> Start Learning
-                </button>
-            </div>`;
-    
-    resultDiv.innerHTML = html;
-}
-
-function downloadSkillPlan(skillName, button) {
-    const planContent = document.querySelector('#enhancementResult').innerText;
-    const blob = new Blob([planContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${skillName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_learning_plan.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Learning plan downloaded!');
-    
-    // Disable button temporarily
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-check"></i> Downloaded';
-    setTimeout(() => {
-        button.disabled = false;
-        button.innerHTML = '<i class="fas fa-download"></i> Download Plan';
-    }, 2000);
-}
-
-function startLearningPlan() {
-    showSuccess('Learning plan activated! Check the Skill Enhancement tab for exercises.');
-    switchTab('skills');
-    elements.featureModal.classList.remove('active');
-}
-
 function displaySkillExercises(exercises) {
     if (!elements.skillExercises) return;
-    
-    // Show skill enhancement prompt if no preferences set
-    const hasPreferences = localStorage.getItem('skillPreferences');
-    if (!hasPreferences && currentUser) {
-        elements.skillExercises.innerHTML = `
-            <div class="skill-prompt">
-                <h4><i class="fas fa-brain"></i> AI Skill Enhancement</h4>
-                <p>Tell us what skills you want to improve and we'll create a personalized learning plan!</p>
-                <button class="btn" onclick="openSkillEnhancementPrompt()">
-                    <i class="fas fa-magic"></i> Create Personalized Learning Plan
-                </button>
-                <div class="default-exercises" style="margin-top: 30px;">
-                    <h5><i class="fas fa-star"></i> Recommended Exercises:</h5>
-                    ${getDefaultExercisesHTML()}
-                </div>
-            </div>
-        `;
-        return;
-    }
     
     if (!exercises || !exercises.length) {
         exercises = getDefaultExercises();
     }
     
     let html = '<h4><i class="fas fa-brain"></i> AI-Generated Skill Exercises</h4>';
-    html += '<p class="subtitle">Personalized exercises based on your skill level and interests</p>';
+    html += '<p class="subtitle">Personalized exercises based on your skill level</p>';
     
     exercises.forEach((exercise, index) => {
         const isCompleted = exercise.completed || false;
@@ -1975,86 +1113,23 @@ function displaySkillExercises(exercises) {
         `;
     });
     
-    // Add refresh button
-    html += `
-        <div class="exercise-actions">
-            <button class="btn" onclick="openSkillEnhancementPrompt()">
-                <i class="fas fa-sync"></i> Get New Exercises
-            </button>
-            <button class="btn" onclick="showRecommendedExercises()">
-                <i class="fas fa-star"></i> View Recommended
-            </button>
-        </div>
-    `;
-    
     elements.skillExercises.innerHTML = html;
 }
 
-function getDefaultExercisesHTML() {
-    const exercises = getDefaultExercises();
-    return exercises.map(exercise => `
-        <div class="exercise-item">
-            <div class="exercise-content">
-                <div class="exercise-header">
-                    <h5>${exercise.title}</h5>
-                    <span class="difficulty ${exercise.difficulty.toLowerCase()}">${exercise.difficulty}</span>
-                </div>
-                <p class="exercise-desc">${exercise.description}</p>
-                <p class="learning-objective">
-                    <i class="fas fa-bullseye"></i> 
-                    <strong>Learning:</strong> ${exercise.learning_outcome}
-                </p>
-                <p class="exercise-time">
-                    <i class="fas fa-clock"></i> ${exercise.estimated_time}
-                </p>
-                <button class="btn-small" onclick="openSkillEnhancementPrompt()">
-                    <i class="fas fa-play"></i> Start Learning
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function showRecommendedExercises() {
-    elements.skillExercises.innerHTML = `
-        <div class="recommended-exercises">
-            <h4><i class="fas fa-star"></i> Recommended Skill Exercises</h4>
-            <div class="recommended-grid">
-                <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('web development')">
-                    <div class="recommended-icon">
-                        <i class="fas fa-code"></i>
-                    </div>
-                    <h5>Web Development</h5>
-                    <p>HTML, CSS, JavaScript, React</p>
-                    <span class="difficulty easy">Beginner</span>
-                </div>
-                <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('python programming')">
-                    <div class="recommended-icon">
-                        <i class="fab fa-python"></i>
-                    </div>
-                    <h5>Python Programming</h5>
-                    <p>Basics, Data Science, Web APIs</p>
-                    <span class="difficulty medium">Intermediate</span>
-                </div>
-                <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('data structures')">
-                    <div class="recommended-icon">
-                        <i class="fas fa-sitemap"></i>
-                    </div>
-                    <h5>Data Structures</h5>
-                    <p>Algorithms, Problem Solving</p>
-                    <span class="difficulty hard">Advanced</span>
-                </div>
-                <div class="recommended-card" onclick="openSkillEnhancementPrompt(); setSkillCategory('database design')">
-                    <div class="recommended-icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <h5>Database Design</h5>
-                    <p>SQL, NoSQL, Data Modeling</p>
-                    <span class="difficulty medium">Intermediate</span>
-                </div>
-            </div>
-        </div>
-    `;
+function getVideoLinks(videoData) {
+    if (!videoData) return '';
+    
+    if (typeof videoData === 'string') {
+        return `<a href="${videoData}" target="_blank" class="video-link">Watch Tutorial</a>`;
+    }
+    
+    if (Array.isArray(videoData)) {
+        return videoData.map(url => 
+            `<a href="${url}" target="_blank" class="video-link">Tutorial ${videoData.indexOf(url) + 1}</a>`
+        ).join('');
+    }
+    
+    return '';
 }
 
 function getDefaultExercises() {
@@ -2095,27 +1170,11 @@ function getDefaultExercises() {
     ];
 }
 
-function getVideoLinks(videoData) {
-    if (!videoData) return '';
-    
-    if (typeof videoData === 'string') {
-        return `<a href="${videoData}" target="_blank" class="video-link">Watch Tutorial</a>`;
-    }
-    
-    if (Array.isArray(videoData)) {
-        return videoData.map(url => 
-            `<a href="${url}" target="_blank" class="video-link">Tutorial ${videoData.indexOf(url) + 1}</a>`
-        ).join('');
-    }
-    
-    return '';
-}
-
 async function completeExercise(exerciseType) {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/complete-exercise/${currentUser.id}/${exerciseType}`, {
+        const response = await fetch(`${API_BASE_URL}/complete-exercise/${currentUser.id}/${exerciseType}`, {
             method: 'POST'
         });
         
@@ -2129,7 +1188,7 @@ async function completeExercise(exerciseType) {
     }
 }
 
-// IMPROVED Version Control Helper Functions
+// Version Control Helper Functions - FIXED
 function openVersionControlHelper() {
     document.getElementById('versionControlModal').style.display = 'flex';
 }
@@ -2146,9 +1205,7 @@ function setVCExample(example) {
         'git init and basic commands': 'Give me git commands for initializing a repository and basic operations',
         'docker run and build commands': 'Show me docker commands for building and running containers',
         'github pull request workflow': 'Explain the GitHub pull request workflow with commands',
-        'resolve merge conflicts': 'How to resolve merge conflicts in Git step by step',
-        'cmd commands for windows': 'Show me common CMD commands for Windows development',
-        'powershell vs cmd differences': 'What are the differences between PowerShell and CMD?'
+        'resolve merge conflicts': 'How to resolve merge conflicts in Git step by step'
     };
     
     const vcRequest = document.getElementById('vcRequest');
@@ -2165,42 +1222,50 @@ async function generateVersionControlHelp() {
         return;
     }
     
-    // Show loading state
-    const resultDiv = document.getElementById('vcResult');
-    const commandsElement = document.getElementById('vcCommands');
-    
-    if (resultDiv && commandsElement) {
-        resultDiv.style.display = 'block';
-        commandsElement.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Generating AI-powered commands...</p></div>';
-    }
+    showLoading('vcResult', 'Generating AI-powered help...');
     
     try {
-        // First try backend API
-        const response = await fetch(`https://projectruntime.onrender.com/version-control-help`, {
+        // Try backend API first
+        const response = await fetch(`${API_BASE_URL}/get-version-control-help`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 request: request,
-                user_id: currentUser?.id || 'guest'
+                user_id: currentUser?.id 
             })
         });
         
         if (response.ok) {
             const data = await response.json();
-            displayVCResult(data.commands || data.response);
+            displayVCResult(data.commands);
         } else {
-            // Fallback to direct AI call or local generation
+            // Fallback to direct AI call
             const aiResponse = await generateVCWithAI(request);
-            displayVCResult(aiResponse || getFastFallbackVCCommands(request));
+            displayVCResult(aiResponse);
         }
     } catch (error) {
         console.error('Error generating VC help:', error);
-        // Final fallback to local commands
-        displayVCResult(getFastFallbackVCCommands(request));
+        displayVCResult(getFallbackVCCommands(request));
     }
 }
 
-// Add this new function for better error handling
+async function generateVCWithAI(request) {
+    const aiPrompt = `User is asking for version control help: "${request}"
+    
+    Provide a comprehensive guide including:
+    1. Relevant commands (Git, Docker, GitHub, etc.)
+    2. Explanation of each command
+    3. Common use cases
+    4. Best practices
+    5. Troubleshooting tips
+    6. Examples with code blocks
+    
+    Format with clear sections and use markdown code blocks for commands.
+    Make it beginner-friendly if needed.`;
+    
+    return await fetchOpenRouterResponse(aiPrompt);
+}
+
 function displayVCResult(commands) {
     const resultDiv = document.getElementById('vcResult');
     const commandsElement = document.getElementById('vcCommands');
@@ -2212,7 +1277,7 @@ function displayVCResult(commands) {
     
     let commandsText = commands;
     if (typeof commands === 'object') {
-        commandsText = commands.commands || commands.response || JSON.stringify(commands, null, 2);
+        commandsText = commands.commands || JSON.stringify(commands, null, 2);
     }
     
     // Format the commands with syntax highlighting
@@ -2231,6 +1296,186 @@ function displayVCResult(commands) {
     resultDiv.scrollIntoView({ behavior: 'smooth' });
 }
 
+function getFallbackVCCommands(request) {
+    const lowerRequest = request.toLowerCase();
+    
+    if (lowerRequest.includes('git') && lowerRequest.includes('basic')) {
+        return `# Git Basic Commands Cheatsheet
+
+## Initialize & Clone
+git init                    # Initialize new repository
+git clone <url>            # Clone existing repository
+git status                 # Check repository status
+
+## Basic Workflow
+git add <file>             # Add file to staging
+git add .                  # Add all files
+git commit -m "message"    # Commit changes
+git push                   # Push to remote
+git pull                   # Pull from remote
+
+## Branching
+git branch                 # List branches
+git branch <name>          # Create new branch
+git checkout <branch>      # Switch branch
+git checkout -b <branch>   # Create & switch
+git merge <branch>         # Merge branch
+
+## History & Logs
+git log                    # View commit history
+git log --oneline          # Compact history
+git diff                   # Show changes
+git show <commit>          # Show commit details
+
+## Undoing Changes
+git reset <file>           # Unstage file
+git reset --hard HEAD      # Discard all changes
+git revert <commit>        # Revert commit
+git checkout -- <file>     # Discard file changes
+
+## Remote Operations
+git remote -v              # View remotes
+git remote add origin <url> # Add remote
+git push -u origin main    # Push & set upstream
+git fetch                  # Fetch from remote
+
+## Best Practices
+- Commit often with descriptive messages
+- Pull before pushing
+- Use feature branches
+- Review changes before committing
+- Keep commits focused and atomic`;
+    } else if (lowerRequest.includes('docker')) {
+        return `# Docker Commands Cheatsheet
+
+## Image Management
+docker build -t <name> .          # Build image
+docker images                     # List images
+docker rmi <image>               # Remove image
+docker pull <image>              # Pull image
+
+## Container Management
+docker run -d -p 80:80 <image>   # Run container
+docker ps                        # List running containers
+docker ps -a                     # List all containers
+docker stop <container>          # Stop container
+docker start <container>         # Start container
+docker restart <container>       # Restart container
+docker rm <container>            # Remove container
+
+## Logs & Inspection
+docker logs <container>          # View logs
+docker logs -f <container>       # Follow logs
+docker inspect <container>       # Inspect container
+docker stats                     # View statistics
+
+## Docker Compose
+docker-compose up                # Start services
+docker-compose down             # Stop services
+docker-compose build            # Build services
+docker-compose logs             # View logs
+
+## Cleanup
+docker system prune             # Remove unused data
+docker container prune          # Remove stopped containers
+docker image prune              # Remove unused images
+
+## Best Practices
+- Use .dockerignore file
+- Keep images small
+- Use multi-stage builds
+- Never run as root
+- Use volumes for persistent data`;
+    } else if (lowerRequest.includes('merge') && lowerRequest.includes('conflict')) {
+        return `# Resolving Git Merge Conflicts
+
+## Step 1: Identify Conflicts
+git status                     # See conflicted files
+git diff                       # View differences
+
+## Step 2: Open Conflicted Files
+# File will contain markers:
+<<<<<<< HEAD
+Your changes here
+=======
+Incoming changes here
+>>>>>>> branch-name
+
+## Step 3: Resolve Conflicts
+# Edit file to keep desired changes
+# Remove conflict markers
+# Save the file
+
+## Step 4: Mark as Resolved
+git add <file>                 # Mark file as resolved
+git add .                      # Mark all files
+
+## Step 5: Complete Merge
+git commit                     # Complete merge commit
+
+## Step 6: Verify
+git log --oneline --graph     # View merge in history
+
+## Alternative: Use Merge Tool
+git mergetool                  # Launch visual merge tool
+
+## Best Practices
+- Pull regularly to avoid conflicts
+- Communicate with team members
+- Review conflicts carefully
+- Test after resolving conflicts
+- Keep commits small and focused
+
+## Common Tools for Conflicts
+- VS Code (built-in)
+- Meld (visual diff tool)
+- KDiff3
+- P4Merge`;
+    } else {
+        return `# Version Control Best Practices
+
+## Git Workflow
+1. git pull origin main          # Get latest changes
+2. git checkout -b feature-name  # Create feature branch
+3. Make changes and test
+4. git add .                     # Stage changes
+5. git commit -m "description"   # Commit with message
+6. git push origin feature-name  # Push branch
+7. Create Pull Request on GitHub
+8. Review and merge
+9. Delete feature branch
+
+## Commit Message Guidelines
+- Use present tense: "Add feature" not "Added feature"
+- Be descriptive but concise
+- Reference issue/ticket numbers
+- First line ≤ 50 characters
+- Body explains what and why
+
+## Branch Naming
+feature/description     # New features
+bugfix/issue-number     # Bug fixes
+hotfix/urgent-fix       # Emergency fixes
+release/version         # Release preparation
+
+## .gitignore Examples
+node_modules/
+.env
+*.log
+dist/
+build/
+.DS_Store
+
+## Useful Aliases
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.ci commit
+git config --global alias.st status
+git config --global alias.unstage 'reset HEAD --'
+git config --global alias.last 'log -1 HEAD'`;
+    }
+}
+
 function copyVCCommands() {
     const pre = document.querySelector('#vcCommands pre');
     if (pre) {
@@ -2240,12 +1485,13 @@ function copyVCCommands() {
             .catch(err => showError('Failed to copy: ' + err));
     }
 }
-// Project History Functions (unchanged)
+
+// Project History Functions
 async function loadProjectHistory() {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/project-history/${currentUser.id}`);
+        const response = await fetch(`${API_BASE_URL}/project-history/${currentUser.id}`);
         if (response.ok) {
             const data = await response.json();
             displayProjectHistory(data.projects);
@@ -2343,7 +1589,7 @@ async function handleAddProject(e) {
     };
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/add-project-history`, {
+        const response = await fetch(`${API_BASE_URL}/add-project-history`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(projectData)
@@ -2363,14 +1609,230 @@ async function handleAddProject(e) {
     }
 }
 
-// Removed Project Evaluation Functions
+// Project Evaluation Functions
+async function evaluateProject() {
+    const projectDescription = elements.projectDescription.value;
+    
+    if (!projectDescription.trim()) {
+        showError('Please describe your project');
+        return;
+    }
+    
+    showLoading('evaluationResult', 'AI is evaluating your project...');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/evaluate-project`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                project_description: projectDescription,
+                user_id: currentUser?.id 
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayEvaluationResult(data.evaluation);
+        } else {
+            throw new Error('Failed to evaluate project');
+        }
+    } catch (error) {
+        console.error('Error evaluating project:', error);
+        displayEvaluationResult(generateManualEvaluation(projectDescription));
+    }
+}
 
-// Project Checklist Functions (unchanged)
+function displayEvaluationResult(evaluation) {
+    let evalData = evaluation;
+    
+    // Parse if it's a string
+    if (typeof evaluation === 'string') {
+        try {
+            evalData = JSON.parse(evaluation);
+        } catch (e) {
+            evalData = generateManualEvaluation(evaluation);
+        }
+    }
+    
+    const score = evalData.score || 75;
+    const strengths = Array.isArray(evalData.strengths) ? evalData.strengths : [evalData.strengths || 'Good structure'];
+    const weaknesses = Array.isArray(evalData.weaknesses) ? evalData.weaknesses : [evalData.weaknesses || 'Need more details'];
+    const missing = Array.isArray(evalData.missing_elements) ? evalData.missing_elements : [evalData.missing_elements || 'Timeline'];
+    const improvements = Array.isArray(evalData.improvement_suggestions) ? evalData.improvement_suggestions : [evalData.improvement_suggestions || 'Add more technical details'];
+    const technical = Array.isArray(evalData.technical_recommendations) ? evalData.technical_recommendations : [evalData.technical_recommendations || 'Use version control'];
+    const feedback = evalData.overall_feedback || 'Good project concept with clear objectives.';
+    
+    // Create score circle with dynamic color
+    const scoreColor = getScoreColor(score);
+    elements.scoreDisplay.innerHTML = `
+        <div class="score-container">
+            <div class="score-circle" style="background: conic-gradient(${scoreColor} ${score}%, #f0f0f0 0%);">
+                <span>${score}/100</span>
+            </div>
+            <div class="score-details">
+                <h5>Project Score</h5>
+                <p class="score-feedback">${feedback}</p>
+                ${evalData.estimated_timeline ? `<p><i class="fas fa-clock"></i> <strong>Estimated Timeline:</strong> ${evalData.estimated_timeline}</p>` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Create recommendations with all sections
+    let recommendationsHTML = '<div class="evaluation-sections">';
+    
+    // Strengths section
+    if (strengths.length > 0) {
+        recommendationsHTML += `
+            <div class="evaluation-section strength">
+                <h5><i class="fas fa-check-circle"></i> Strengths</h5>
+                <ul>${strengths.map(s => `<li>${s}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+    
+    // Areas for improvement
+    if (weaknesses.length > 0) {
+        recommendationsHTML += `
+            <div class="evaluation-section improvement">
+                <h5><i class="fas fa-tools"></i> Areas for Improvement</h5>
+                <ul>${weaknesses.map(w => `<li>${w}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+    
+    // Missing elements
+    if (missing.length > 0) {
+        recommendationsHTML += `
+            <div class="evaluation-section missing">
+                <h5><i class="fas fa-search-minus"></i> Missing Elements</h5>
+                <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+    
+    // Improvement suggestions
+    if (improvements.length > 0) {
+        recommendationsHTML += `
+            <div class="evaluation-section suggestions">
+                <h5><i class="fas fa-lightbulb"></i> Improvement Suggestions</h5>
+                <ul>${improvements.map(i => `<li>${i}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+    
+    // Technical recommendations
+    if (technical.length > 0) {
+        recommendationsHTML += `
+            <div class="evaluation-section technical">
+                <h5><i class="fas fa-code"></i> Technical Recommendations</h5>
+                <ul>${technical.map(t => `<li>${t}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+    
+    // Required skills
+    if (evalData.required_skills && Array.isArray(evalData.required_skills)) {
+        recommendationsHTML += `
+            <div class="evaluation-section skills">
+                <h5><i class="fas fa-graduation-cap"></i> Required Skills</h5>
+                <div class="skill-tags">
+                    ${evalData.required_skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    recommendationsHTML += '</div>';
+    
+    elements.recommendations.innerHTML = recommendationsHTML;
+    elements.evaluationResult.style.display = 'block';
+}
+
+function getScoreColor(score) {
+    if (score >= 80) return '#4CAF50'; // Green
+    if (score >= 60) return '#FFC107'; // Yellow
+    if (score >= 40) return '#FF9800'; // Orange
+    return '#F44336'; // Red
+}
+
+function generateManualEvaluation(description) {
+    let score = 50;
+    const strengths = [];
+    const weaknesses = [];
+    const missing = [];
+    const improvements = [];
+    const technical = [];
+    
+    // Simple evaluation logic
+    if (description.length > 100) score += 15;
+    if (description.includes('objective') || description.includes('goal')) {
+        score += 10;
+        strengths.push('Clear objectives defined');
+    } else {
+        weaknesses.push('No clear objectives defined');
+        missing.push('Project goals and objectives');
+    }
+    
+    if (description.includes('technology') || description.includes('framework')) {
+        score += 10;
+        strengths.push('Technology stack mentioned');
+    } else {
+        weaknesses.push('Technology stack not specified');
+        missing.push('Technical specifications');
+    }
+    
+    if (description.includes('method') || description.includes('approach')) {
+        score += 10;
+        strengths.push('Methodology described');
+    } else {
+        weaknesses.push('Development methodology missing');
+        missing.push('Implementation approach');
+    }
+    
+    if (description.includes('result') || description.includes('outcome')) {
+        score += 5;
+        strengths.push('Expected outcomes mentioned');
+    } else {
+        weaknesses.push('Expected outcomes not specified');
+        missing.push('Success criteria');
+    }
+    
+    // Add improvement suggestions
+    if (score > 80) {
+        improvements.push('Consider adding user testing phase');
+        improvements.push('Implement monitoring and analytics');
+        technical.push('Consider using Docker for containerization');
+        technical.push('Implement automated testing pipeline');
+    } else if (score > 60) {
+        improvements.push('Add detailed project timeline');
+        improvements.push('Include risk assessment');
+        technical.push('Use Git for version control');
+        technical.push('Implement error logging');
+    } else {
+        improvements.push('Expand project description with more details');
+        improvements.push('Define clear milestones and deliverables');
+        technical.push('Learn basic Git commands');
+        technical.push('Start with simple technology stack');
+    }
+    
+    return {
+        score: Math.min(score, 100),
+        strengths: strengths.length > 0 ? strengths : ['Project idea identified'],
+        weaknesses: weaknesses.length > 0 ? weaknesses : ['Need more detailed planning'],
+        missing_elements: missing.length > 0 ? missing : ['Detailed requirements'],
+        improvement_suggestions: improvements,
+        technical_recommendations: technical,
+        overall_feedback: score > 70 ? 'Good foundation, needs refinement' : 'Basic concept, requires significant development',
+        estimated_timeline: score > 70 ? '4-6 weeks' : '8-12 weeks',
+        required_skills: ['Problem Solving', 'Basic Programming', 'Documentation']
+    };
+}
+
 async function loadProjectChecklist() {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`https://projectruntime.onrender.com/project-checklist/${currentUser.id}`);
+        const response = await fetch(`${API_BASE_URL}/project-checklist/${currentUser.id}`);
         if (response.ok) {
             const data = await response.json();
             displayProjectChecklist(data.checklist, data.score);
@@ -2439,14 +1901,7 @@ function displayProjectChecklist(checklist, score) {
     elements.projectChecklist.innerHTML = html;
 }
 
-function getScoreColor(score) {
-    if (score >= 80) return '#4CAF50'; // Green
-    if (score >= 60) return '#FFC107'; // Yellow
-    if (score >= 40) return '#FF9800'; // Orange
-    return '#F44336'; // Red
-}
-
-// Portfolio Functions - UPDATED with auto-load
+// Portfolio Functions - FIXED
 function openPortfolioBuilder() {
     document.getElementById('portfolioBuilderModal').style.display = 'flex';
     loadPortfolioForm();
@@ -2457,10 +1912,6 @@ function closePortfolioBuilder() {
 }
 
 function loadPortfolioForm() {
-    // Get portfolio form container in portfolio tab
-    const portfolioForm = document.getElementById('portfolioForm');
-    if (!portfolioForm) return;
-    
     // Pre-fill form with existing data
     if (userProfile) {
         document.getElementById('portfolioName').value = currentUser?.username || '';
@@ -2522,112 +1973,49 @@ function removeSkill(button) {
 
 async function generatePortfolio() {
     try {
-        // First, try to get elements from the active portfolio form in the tab
-        // Use query selector that finds elements specifically in the active tab content
-        const portfolioTab = document.getElementById('portfolio-tab');
-        
-        // Get all form elements WITHIN the portfolio tab
-        const nameInput = portfolioTab.querySelector('#portfolioName') || document.getElementById('portfolioName');
-        const emailInput = portfolioTab.querySelector('#portfolioEmail') || document.getElementById('portfolioEmail');
-        const collegeInput = portfolioTab.querySelector('#portfolioCollege') || document.getElementById('portfolioCollege');
-        const branchInput = portfolioTab.querySelector('#portfolioBranch') || document.getElementById('portfolioBranch');
-        const semesterInput = portfolioTab.querySelector('#portfolioSemester') || document.getElementById('portfolioSemester');
-        const phoneInput = portfolioTab.querySelector('#portfolioPhone') || document.getElementById('portfolioPhone');
-        const bioInput = portfolioTab.querySelector('#portfolioBio') || document.getElementById('portfolioBio');
-        const githubInput = portfolioTab.querySelector('#portfolioGithub') || document.getElementById('portfolioGithub');
-        const linkedinInput = portfolioTab.querySelector('#portfolioLinkedin') || document.getElementById('portfolioLinkedin');
-        
-        if (!nameInput || !nameInput.value.trim()) {
-            showError('Please enter your name for the portfolio');
-            return;
-        }
-        
+        // Collect form data
         const portfolioData = {
-            user_id: currentUser?.id || 'guest',
-            name: nameInput.value.trim(),
+            user_id: currentUser.id,
+            name: document.getElementById('portfolioName')?.value || currentUser.username,
             contact: {
-                email: emailInput?.value.trim() || '',
-                github: githubInput?.value.trim() || '',
-                linkedin: linkedinInput?.value.trim() || '',
-                phone: phoneInput?.value.trim() || '',
-                bio: bioInput?.value.trim() || ''
+                email: document.getElementById('portfolioEmail')?.value || '',
+                github: document.getElementById('portfolioGithub')?.value || '',
+                linkedin: document.getElementById('portfolioLinkedin')?.value || '',
+                phone: document.getElementById('portfolioPhone')?.value || '',
+                bio: document.getElementById('portfolioBio')?.value || ''
             },
             education: {
-                college: collegeInput?.value.trim() || '',
-                branch: branchInput?.value.trim() || '',
-                semester: semesterInput?.value.trim() || '',
+                college: document.getElementById('portfolioCollege')?.value || '',
+                branch: document.getElementById('portfolioBranch')?.value || '',
+                semester: document.getElementById('portfolioSemester')?.value || '',
                 year: new Date().getFullYear()
             }
         };
         
-        // Collect skills - look specifically in portfolio tab
-        const portfolioSkillsContainer = portfolioTab.querySelector('#portfolioSkills') || document.getElementById('portfolioSkills');
-        const skillTags = portfolioSkillsContainer ? portfolioSkillsContainer.querySelectorAll('.skill-tag-editable') : [];
-        
+        // Collect skills
+        const skillTags = document.querySelectorAll('.skill-tag-editable');
         portfolioData.skills = Array.from(skillTags).map(tag => 
             tag.textContent.replace('×', '').trim()
-        ).filter(skill => skill.length > 0);
+        );
         
-        // If no skills, add some defaults
-        if (portfolioData.skills.length === 0) {
-            portfolioData.skills = ['HTML/CSS', 'JavaScript', 'Python', 'Git'];
-        }
-        
-        // Collect selected projects - look specifically in portfolio tab
-        const projectsContainer = portfolioTab.querySelector('#portfolioProjects') || document.getElementById('portfolioProjects');
+        // Collect selected projects
         const selectedProjects = [];
-        
-        if (projectsContainer) {
-            const projectCheckboxes = projectsContainer.querySelectorAll('input[type="checkbox"]:checked');
-            
-            projectCheckboxes.forEach(checkbox => {
-                const projectId = checkbox.id.replace('project-', '');
-                const project = projectHistory.find(p => p.project_name === projectId) || projectHistory[parseInt(projectId)];
-                if (project) {
-                    selectedProjects.push({
-                        name: project.project_name || 'Project',
-                        description: project.notes || 'College project',
-                        technologies: project.domain || 'Various',
-                        status: project.status || 'completed',
-                        type: project.project_type || 'web'
-                    });
-                }
-            });
-            
-            // If no projects selected, use all available projects
-            if (selectedProjects.length === 0 && projectHistory.length > 0) {
-                projectHistory.slice(0, 3).forEach(project => {
-                    selectedProjects.push({
-                        name: project.project_name || 'Project',
-                        description: project.notes || 'College project',
-                        technologies: project.domain || 'Various',
-                        status: project.status || 'completed',
-                        type: project.project_type || 'web'
-                    });
+        document.querySelectorAll('.project-item input:checked').forEach(checkbox => {
+            const index = parseInt(checkbox.parentElement.dataset.index);
+            if (projectHistory[index]) {
+                selectedProjects.push({
+                    name: projectHistory[index].project_name,
+                    description: projectHistory[index].notes || 'College project',
+                    technologies: projectHistory[index].domain || 'Various',
+                    status: projectHistory[index].status || 'completed'
                 });
             }
-        }
+        });
         
         portfolioData.projects = selectedProjects;
         
-        // If still no projects, create a placeholder
-        if (portfolioData.projects.length === 0) {
-            portfolioData.projects = [{
-                name: 'Sample Project',
-                description: 'A web application built for college coursework',
-                technologies: 'HTML, CSS, JavaScript',
-                status: 'completed'
-            }];
-        }
-        
-        // Show loading
-        const preview = document.getElementById('portfolioPreview');
-        if (preview) {
-            preview.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Generating AI portfolio...</p></div>';
-        }
-        
         // Generate portfolio using backend API
-        const response = await fetch(`https://projectruntime.onrender.com/generate-portfolio`, {
+        const response = await fetch(`${API_BASE_URL}/generate-portfolio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(portfolioData)
@@ -2635,59 +2023,17 @@ async function generatePortfolio() {
         
         if (response.ok) {
             const data = await response.json();
-            if (data.portfolio_html) {
-                displayPortfolioPreview(data.portfolio_html);
-                showSuccess('Portfolio generated successfully!');
-            } else if (data.error) {
-                throw new Error(data.error);
-            } else {
-                // Fallback to frontend generation
-                const fallbackHTML = generateFallbackPortfolio(portfolioData);
-                displayPortfolioPreview(fallbackHTML);
-                showSuccess('Portfolio generated!');
-            }
+            displayPortfolioPreview(data.portfolio_html);
+            showSuccess('Portfolio generated successfully!');
         } else {
             // Fallback to frontend generation
             const fallbackHTML = generateFallbackPortfolio(portfolioData);
             displayPortfolioPreview(fallbackHTML);
-            showSuccess('Portfolio generated (offline mode)!');
+            showSuccess('Portfolio generated (fallback mode)!');
         }
     } catch (error) {
         console.error('Error generating portfolio:', error);
-        
-        // Try to use local data for fallback generation
-        try {
-            const name = document.getElementById('portfolioName')?.value || currentUser?.username || 'Student';
-            const portfolioData = {
-                name: name,
-                education: {
-                    college: document.getElementById('portfolioCollege')?.value || '',
-                    branch: document.getElementById('portfolioBranch')?.value || ''
-                },
-                skills: ['HTML/CSS', 'JavaScript', 'Python', 'FastAPI', 'SQLite', 'Git'],
-                projects: projectHistory.slice(0, 3).map(p => ({
-                    name: p.project_name,
-                    description: p.notes || 'Project',
-                    technologies: p.domain || 'Various'
-                }))
-            };
-            
-            // If no projects, add sample
-            if (portfolioData.projects.length === 0) {
-                portfolioData.projects = [{
-                    name: 'Smart Project Assistant',
-                    description: 'AI-powered project management system for students',
-                    technologies: 'HTML, CSS, JavaScript, Python, FastAPI'
-                }];
-            }
-            
-            const fallbackHTML = generateFallbackPortfolio(portfolioData);
-            displayPortfolioPreview(fallbackHTML);
-            showSuccess('Portfolio generated (fallback mode)!');
-        } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
-            showError('Failed to generate portfolio. Please check your connection and try again.');
-        }
+        showError('Failed to generate portfolio. Please try again.');
     }
 }
 
@@ -2695,29 +2041,14 @@ function displayPortfolioPreview(html) {
     const preview = document.getElementById('portfolioPreview');
     if (!preview) return;
     
-    // Clean the HTML to remove duplicate HTML/HEAD/BODY tags if present
-    let cleanHtml = html;
-    
-    // Check if it's a full HTML document
-    if (html.includes('<!DOCTYPE html>') || html.includes('<html')) {
-        // Extract only the body content
-        const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        if (bodyMatch && bodyMatch[1]) {
-            cleanHtml = bodyMatch[1];
-        }
-    }
-    
-    // Create preview container
+    // Create iframe for preview
     preview.innerHTML = `
         <div class="portfolio-preview-container">
             <div class="preview-header">
                 <h5><i class="fas fa-eye"></i> Portfolio Preview</h5>
                 <div class="preview-actions">
-                    <button class="btn-small" onclick="downloadPortfolioHTML()">
+                    <button class="btn-small" onclick="downloadPortfolio()">
                         <i class="fas fa-download"></i> Download HTML
-                    </button>
-                    <button class="btn-small" onclick="copyPortfolioCode()">
-                        <i class="fas fa-copy"></i> Copy HTML Code
                     </button>
                     <button class="btn-small" onclick="printPortfolio()">
                         <i class="fas fa-print"></i> Print as PDF
@@ -2725,13 +2056,10 @@ function displayPortfolioPreview(html) {
                 </div>
             </div>
             <div class="preview-content">
-                ${cleanHtml}
+                ${html}
             </div>
         </div>
     `;
-    
-    // Scroll to preview
-    preview.scrollIntoView({ behavior: 'smooth' });
 }
 
 function generateFallbackPortfolio(data) {
@@ -2742,220 +2070,132 @@ function generateFallbackPortfolio(data) {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${data.name} - Portfolio</title>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-                
-                body {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: #333;
-                    line-height: 1.6;
-                }
-                
-                .portfolio-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    background: white;
-                    border-radius: 15px;
-                    overflow: hidden;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-                }
-                
-                .header {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 60px 40px;
-                    text-align: center;
-                }
-                
-                .header h1 {
-                    font-size: 2.8rem;
-                    margin-bottom: 10px;
-                }
-                
-                .content {
-                    padding: 40px;
-                }
-                
-                .section {
-                    margin-bottom: 40px;
-                }
-                
-                .skills-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                    gap: 15px;
-                    margin: 20px 0;
-                }
-                
-                .skill-item {
-                    background: #f8f9ff;
-                    padding: 15px;
-                    border-radius: 10px;
-                    text-align: center;
-                    border: 2px solid #e6e8ff;
-                }
-                
-                .projects-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 25px;
-                }
-                
-                .project-card {
-                    background: white;
-                    border-radius: 15px;
-                    padding: 25px;
-                    border: 2px solid #e6e8ff;
-                    transition: all 0.3s;
-                }
-                
-                .project-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
-                }
-                
-                .footer {
-                    text-align: center;
-                    padding: 30px;
-                    background: #f8f9ff;
-                    color: #666;
-                    border-top: 2px solid #e6e8ff;
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+                .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+                .header { text-align: center; padding: 50px 0; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; margin-bottom: 30px; }
+                .project-card { background: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+                .skills-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+                .skill-tag { background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+                .contact-info { background: white; padding: 20px; border-radius: 10px; margin-top: 30px; }
+                @media print {
+                    body { background: white; }
+                    .no-print { display: none; }
                 }
             </style>
         </head>
         <body>
-            <div class="portfolio-container">
-                <div class="header">
-                    <h1>${data.name}</h1>
-                    <p>${data.education.college || 'Student'} | ${data.education.branch || 'Computer Science'}</p>
-                    <p>Portfolio - ${data.education.year || '2024'}</p>
-                </div>
+            <div class="header">
+                <h1>${data.name}</h1>
+                <p>${data.education.college || 'Student'} | ${data.education.branch || 'Computer Science'}</p>
+                <p>Portfolio - ${data.education.year || '2024'}</p>
+            </div>
+            
+            <div class="container">
+                <section>
+                    <h2>About Me</h2>
+                    <p>${data.contact.bio || 'Passionate student developer focused on building innovative projects and learning new technologies.'}</p>
+                </section>
                 
-                <div class="content">
-                    <div class="section">
-                        <h2>About Me</h2>
-                        <p>${data.contact.bio || 'Passionate student developer focused on building innovative projects and learning new technologies.'}</p>
+                <section>
+                    <h2>Skills</h2>
+                    <div class="skills-list">
+                        ${data.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
                     </div>
-                    
-                    <div class="section">
-                        <h2>Skills</h2>
-                        <div class="skills-grid">
-                            ${data.skills.map(skill => `
-                                <div class="skill-item">
-                                    <h3>${skill}</h3>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    
-                    <div class="section">
-                        <h2>Projects</h2>
-                        <div class="projects-grid">
-                            ${data.projects.map(project => `
-                                <div class="project-card">
-                                    <h3>${project.name}</h3>
-                                    <p>${project.description}</p>
-                                    <p><strong>Technologies:</strong> ${project.technologies}</p>
-                                    <p><strong>Status:</strong> ${project.status}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
+                </section>
                 
-                <div class="footer">
-                    <p>© ${new Date().getFullYear()} ${data.name} - Portfolio</p>
-                    <p>Generated using Smart Project Assistant v3.0</p>
-                </div>
+                <section>
+                    <h2>Projects</h2>
+                    ${data.projects.map(project => `
+                        <div class="project-card">
+                            <h3>${project.name}</h3>
+                            <p>${project.description}</p>
+                            <p><strong>Technologies:</strong> ${project.technologies}</p>
+                            <p><strong>Status:</strong> ${project.status}</p>
+                        </div>
+                    `).join('')}
+                </section>
+                
+                <section class="contact-info">
+                    <h2>Contact Information</h2>
+                    <p><strong>Email:</strong> ${data.contact.email || 'Not provided'}</p>
+                    <p><strong>GitHub:</strong> ${data.contact.github || 'Not provided'}</p>
+                    <p><strong>LinkedIn:</strong> ${data.contact.linkedin || 'Not provided'}</p>
+                    <p><strong>Phone:</strong> ${data.contact.phone || 'Not provided'}</p>
+                </section>
+            </div>
+            
+            <div class="no-print" style="text-align: center; margin: 40px 0;">
+                <p style="color: #666; font-size: 14px;">Generated by Smart Project Assistant</p>
             </div>
         </body>
         </html>
     `;
 }
 
-// Updated Portfolio Download Functions
-function downloadPortfolioHTML() {
-    const previewContent = document.querySelector('.preview-content');
-    if (!previewContent) {
-        showError('No portfolio preview available');
+// Fixed Portfolio Download Functions
+function generateReadme() {
+    if (!currentUser || !userProfile) {
+        showError('Please complete your profile first');
         return;
     }
     
-    // Get the HTML content
-    const htmlContent = previewContent.innerHTML;
+    const readmeContent = `# ${userProfile?.current_projects?.split(',')[0] || 'My Project'} - Portfolio
+
+## 👤 About Me
+**Name:** ${currentUser.username}
+**College:** ${userProfile.college_name || 'N/A'}
+**Branch:** ${userProfile.branch || 'N/A'}
+**Semester:** ${userProfile.semester || 'N/A'}
+**Skill Level:** ${userProfile.skill_level || 'Beginner'}
+
+## 📋 Projects
+${projectHistory.map(project => `
+### ${project.project_name}
+- **Type:** ${project.project_type}
+- **Domain:** ${project.domain}
+- **Status:** ${project.status}
+- **Description:** ${project.notes || 'No description available'}
+`).join('\n')}
+
+## 💻 Skills
+- HTML/CSS
+- JavaScript
+- Python
+- FastAPI
+- SQLite
+- Git & GitHub
+
+## 🎯 Learning Objectives
+${userProfile.current_projects || 'Building practical projects to enhance development skills'}
+
+## 📞 Contact
+- **Portfolio:** Generated using Smart Project Assistant v3.0
+- **Date:** ${new Date().toLocaleDateString()}
+
+---
+
+*This README was automatically generated by Smart Project Assistant*`;
+
+    downloadFile('README.md', readmeContent);
+    showSuccess('README.md generated and downloaded!');
+}
+
+function generatePortfolioPage() {
+    if (!currentUser) {
+        showError('Please login first');
+        return;
+    }
     
-    // Create complete HTML document
-    const completeHTML = `
+    const portfolioHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${currentUser?.username || 'Student'} - Portfolio</title>
+    <title>${currentUser.username} - Portfolio</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        ${getPortfolioCSS()}
-    </style>
-</head>
-<body>
-    ${htmlContent}
-</body>
-</html>`;
-    
-    // Download the file
-    const blob = new Blob([completeHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `portfolio_${currentUser?.username || 'student'}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Portfolio HTML file downloaded!');
-}
-
-function copyPortfolioCode() {
-    const previewContent = document.querySelector('.preview-content');
-    if (!previewContent) {
-        showError('No portfolio preview available');
-        return;
-    }
-    
-    // Get the HTML content
-    const htmlContent = previewContent.innerHTML;
-    
-    // Create complete HTML document for copying
-    const completeHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${currentUser?.username || 'Student'} - Portfolio</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        ${getPortfolioCSS()}
-    </style>
-</head>
-<body>
-    ${htmlContent}
-</body>
-</html>`;
-    
-    navigator.clipboard.writeText(completeHTML)
-        .then(() => showSuccess('Portfolio HTML code copied to clipboard!'))
-        .catch(err => showError('Failed to copy: ' + err));
-}
-
-function getPortfolioCSS() {
-    return `
         * {
             margin: 0;
             padding: 0;
@@ -2994,6 +2234,16 @@ function getPortfolioCSS() {
         .header h1 {
             font-size: 2.8rem;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
         }
         
         .content {
@@ -3002,18 +2252,54 @@ function getPortfolioCSS() {
         
         .section {
             margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        .section h2 {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+        
+        .section h2 i {
+            background: #667eea;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .about-text {
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.8;
+            background: #f8f9ff;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
         }
         
         .skills-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
-            margin: 20px 0;
         }
         
         .skill-item {
-            background: #f8f9ff;
-            padding: 15px;
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            padding: 20px;
             border-radius: 10px;
             text-align: center;
             border: 2px solid #e6e8ff;
@@ -3023,6 +2309,13 @@ function getPortfolioCSS() {
         .skill-item:hover {
             transform: translateY(-5px);
             border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .skill-item i {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 10px;
         }
         
         .projects-grid {
@@ -3034,7 +2327,7 @@ function getPortfolioCSS() {
         .project-card {
             background: white;
             border-radius: 15px;
-            padding: 25px;
+            overflow: hidden;
             border: 2px solid #e6e8ff;
             transition: all 0.3s;
         }
@@ -3045,11 +2338,78 @@ function getPortfolioCSS() {
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
         }
         
-        .contact-info {
+        .project-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .project-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        
+        .project-content {
+            padding: 20px;
+        }
+        
+        .project-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .project-tag {
+            background: #f0f2ff;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .project-desc {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
             background: #f8f9ff;
-            padding: 30px;
-            border-radius: 15px;
-            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            border: 2px solid #e6e8ff;
+        }
+        
+        .contact-icon {
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .contact-info h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .contact-info p {
+            margin: 0;
+            color: #666;
         }
         
         .footer {
@@ -3060,6 +2420,10 @@ function getPortfolioCSS() {
             border-top: 2px solid #e6e8ff;
         }
         
+        .footer p {
+            margin: 5px 0;
+        }
+        
         @media (max-width: 768px) {
             .header {
                 padding: 40px 20px;
@@ -3067,6 +2431,8 @@ function getPortfolioCSS() {
             
             .header h1 {
                 font-size: 2rem;
+                flex-direction: column;
+                gap: 10px;
             }
             
             .content {
@@ -3074,27 +2440,189 @@ function getPortfolioCSS() {
             }
             
             .skills-grid,
-            .projects-grid {
+            .projects-grid,
+            .contact-grid {
                 grid-template-columns: 1fr;
             }
         }
+    </style>
+</head>
+<body>
+    <div class="portfolio-container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-user-graduate"></i>
+                ${currentUser.username}
+            </h1>
+            <p>${userProfile?.college_name || 'Computer Science Student'}</p>
+            <p>${userProfile?.branch || 'Engineering'} | Semester ${userProfile?.semester || 'Current'}</p>
+            <p>${userProfile?.skill_level ? userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1) : 'Beginner'} Level Developer</p>
+        </div>
         
-        @media print {
-            body {
-                background: white !important;
-            }
+        <div class="content">
+            <div class="section">
+                <h2><i class="fas fa-user"></i> About Me</h2>
+                <div class="about-text">
+                    <p>${userProfile?.current_projects || 'Passionate computer science student with strong interest in full-stack web development, artificial intelligence, and building practical projects that solve real-world problems.'}</p>
+                    <p>Currently focused on enhancing my skills through hands-on project development and continuous learning. Always eager to take on new challenges and collaborate on innovative solutions.</p>
+                </div>
+            </div>
             
-            .portfolio-container {
-                box-shadow: none;
-                margin: 0;
-                border-radius: 0;
-            }
+            <div class="section">
+                <h2><i class="fas fa-code"></i> Technical Skills</h2>
+                <div class="skills-grid">
+                    <div class="skill-item">
+                        <i class="fab fa-html5"></i>
+                        <h3>Frontend</h3>
+                        <p>HTML5, CSS3, JavaScript</p>
+                    </div>
+                    <div class="skill-item">
+                        <i class="fab fa-python"></i>
+                        <h3>Backend</h3>
+                        <p>Python, FastAPI</p>
+                    </div>
+                    <div class="skill-item">
+                        <i class="fas fa-database"></i>
+                        <h3>Database</h3>
+                        <p>SQLite, MySQL</p>
+                    </div>
+                    <div class="skill-item">
+                        <i class="fab fa-git-alt"></i>
+                        <h3>Tools</h3>
+                        <p>Git, GitHub, VS Code</p>
+                    </div>
+                </div>
+            </div>
             
-            .no-print {
-                display: none !important;
-            }
-        }
-    `;
+            <div class="section">
+                <h2><i class="fas fa-project-diagram"></i> Projects</h2>
+                <div class="projects-grid">
+                    ${projectHistory.length > 0 ? projectHistory.map(project => `
+                        <div class="project-card">
+                            <div class="project-header">
+                                <h3>${project.project_name}</h3>
+                            </div>
+                            <div class="project-content">
+                                <div class="project-meta">
+                                    <span class="project-tag">${project.project_type}</span>
+                                    <span class="project-tag">${project.domain}</span>
+                                    <span class="project-tag">${project.status.replace('_', ' ')}</span>
+                                </div>
+                                <p class="project-desc">${project.notes || 'A well-structured project demonstrating practical implementation of concepts learned.'}</p>
+                            </div>
+                        </div>
+                    `).join('') : `
+                        <div class="project-card">
+                            <div class="project-header">
+                                <h3>Smart Project Assistant</h3>
+                            </div>
+                            <div class="project-content">
+                                <div class="project-meta">
+                                    <span class="project-tag">Web Application</span>
+                                    <span class="project-tag">Education</span>
+                                    <span class="project-tag">Completed</span>
+                                </div>
+                                <p class="project-desc">A comprehensive project management system with AI-powered features for students.</p>
+                            </div>
+                        </div>
+                    `}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-envelope"></i> Contact Information</h2>
+                <div class="contact-grid">
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="contact-info">
+                            <h4>Education</h4>
+                            <p>${userProfile?.college_name || 'University'}</p>
+                            <p>${userProfile?.branch || 'Computer Science'}</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-user-tag"></i>
+                        </div>
+                        <div class="contact-info">
+                            <h4>Skill Level</h4>
+                            <p>${userProfile?.skill_level ? userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1) : 'Beginner'}</p>
+                            <p>${userProfile?.semester ? 'Semester ' + userProfile.semester : 'Current Semester'}</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="contact-info">
+                            <h4>Portfolio Generated</h4>
+                            <p>${new Date().toLocaleDateString()}</p>
+                            <p>Smart Project Assistant v3.0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© ${new Date().getFullYear()} ${currentUser.username} - Portfolio</p>
+            <p>Generated using Smart Project Assistant</p>
+            <p>This portfolio showcases academic projects and skills development</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add print functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const style = document.createElement('style');
+            style.textContent = \`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .portfolio-container, .portfolio-container * {
+                        visibility: visible;
+                    }
+                    .portfolio-container {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        box-shadow: none;
+                    }
+                }
+            \`;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>`;
+
+    downloadFile('portfolio.html', portfolioHTML);
+    showSuccess('Portfolio page generated and downloaded!');
+}
+
+function downloadPortfolio() {
+    const previewContent = document.querySelector('.preview-content');
+    if (!previewContent) {
+        showError('No portfolio preview available');
+        return;
+    }
+    
+    const html = previewContent.innerHTML;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio_${currentUser.username}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showSuccess('Portfolio downloaded!');
 }
 
 function printPortfolio() {
@@ -3228,47 +2756,6 @@ function downloadGitGuide() {
     showSuccess('Git guide downloaded!');
 }
 
-// Plan download functions
-function downloadPlanAsPDF(projectName, button) {
-    const planContent = document.querySelector('#planResult').innerText;
-    const blob = new Blob([planContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_plan.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Project plan downloaded!');
-    
-    // Disable button temporarily
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-check"></i> Downloaded';
-    setTimeout(() => {
-        button.disabled = false;
-        button.innerHTML = '<i class="fas fa-download"></i> Download Plan as PDF';
-    }, 2000);
-}
-
-function copyPlanToClipboard(button) {
-    const planContent = document.querySelector('#planResult').innerText;
-    navigator.clipboard.writeText(planContent)
-        .then(() => {
-            showSuccess('Project plan copied to clipboard!');
-            
-            // Disable button temporarily
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-check"></i> Copied';
-            setTimeout(() => {
-                button.disabled = false;
-                button.innerHTML = '<i class="fas fa-copy"></i> Copy Plan';
-            }, 2000);
-        })
-        .catch(err => showError('Failed to copy: ' + err));
-}
-
 // Auth Status Check
 function checkAuthStatus() {
     if (currentUser) {
@@ -3292,17 +2779,17 @@ function handleLogout() {
 // Make functions globally available
 window.openFeature = openFeature;
 window.generateProjectIdeas = generateProjectIdeas;
-window.generateEnhancedProjectPlan = generateEnhancedProjectPlan;
+window.generateProjectPlan = generateProjectPlan;
 window.generateDocumentation = generateDocumentation;
 window.generateCodeSnippet = generateCodeSnippet;
 window.copyGeneratedSnippet = copyGeneratedSnippet;
-window.openSkillEnhancementPrompt = openSkillEnhancementPrompt;
-window.setSkillCategory = setSkillCategory;
-window.generateSkillEnhancementPlan = generateSkillEnhancementPlan;
 window.completeExercise = completeExercise;
 window.showAddProjectForm = showAddProjectForm;
 window.closeAddProjectForm = closeAddProjectForm;
 window.handleAddProject = handleAddProject;
+window.evaluateProject = evaluateProject;
+window.generateReadme = generateReadme;
+window.generatePortfolioPage = generatePortfolioPage;
 window.downloadDocumentation = downloadDocumentation;
 window.downloadGitGuide = downloadGitGuide;
 window.openVersionControlHelper = openVersionControlHelper;
@@ -3315,8 +2802,5 @@ window.closePortfolioBuilder = closePortfolioBuilder;
 window.addSkill = addSkill;
 window.removeSkill = removeSkill;
 window.generatePortfolio = generatePortfolio;
-window.downloadPortfolioHTML = downloadPortfolioHTML;
-window.copyPortfolioCode = copyPortfolioCode;
+window.downloadPortfolio = downloadPortfolio;
 window.printPortfolio = printPortfolio;
-window.downloadPlanAsPDF = downloadPlanAsPDF;
-window.copyPlanToClipboard = copyPlanToClipboard;
